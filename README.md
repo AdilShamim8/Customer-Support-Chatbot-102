@@ -1,1 +1,2 @@
-# Build-a-Customer-Support-Chatbot-102
+# Project 2
+# Build a Customer Support Chatbot using RAGs and Prompt Engineering
