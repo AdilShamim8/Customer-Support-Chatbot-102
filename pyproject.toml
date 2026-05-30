@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "customer-support-chatbot"
+version = "1.0.0"
+description = "Production RAG-based Customer Support Chatbot"
+authors = ["Your Team"]
+python = "^3.11"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

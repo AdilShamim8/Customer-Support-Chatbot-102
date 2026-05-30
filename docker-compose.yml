@@ -1,0 +1,171 @@
+version: "3.9"
+
+services:
+
+  # ── Main Application ─────────────────────────────────────────────────────────
+  chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: support-chatbot
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - COHERE_API_KEY=${COHERE_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - DATABASE_URL=postgresql+asyncpg://chatbot:${POSTGRES_PASSWORD}@postgres:5432/chatbot_db
+      - LOG_LEVEL=INFO
+      - TOP_K_RETRIEVAL=10
+      - TOP_K_RERANK=5
+    volumes:
+      - chatbot_data:/app/data
+      - chatbot_logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+
+  # ── Redis (Conversation Store) ────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: support-redis
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+
+  # ── ChromaDB (Vector Store) ───────────────────────────────────────────────────
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: support-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token.TokenConfigServerAuthCredentialsProvider
+      - ANONYMIZED_TELEMETRY=false
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+
+  # ── Elasticsearch (Keyword Search) ────────────────────────────────────────────
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: support-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ── PostgreSQL (Conversation DB) ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: support-postgres
+    environment:
+      - POSTGRES_DB=chatbot_db
+      - POSTGRES_USER=chatbot
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbot -d chatbot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+
+  # ── Prometheus (Metrics) ──────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: support-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+
+  # ── Grafana (Dashboards) ──────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: support-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+
+# ── Networks & Volumes ────────────────────────────────────────────────────────
+
+networks:
+  chatbot_network:
+    driver: bridge
+
+volumes:
+  chatbot_data:
+  chatbot_logs:
+  redis_data:
+  chroma_data:
+  es_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
