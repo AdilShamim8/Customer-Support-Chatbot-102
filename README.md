@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🤖 Customer Support Chatbot
+# Project 2 - Build a Customer Support Chatbot using RAGs and Prompt Engineering
 ### Production-Grade RAG System with Prompt Engineering & PEFT Fine-Tuning
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
