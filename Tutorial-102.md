@@ -294,7 +294,7 @@ SMART ENGINEERING APPROACH:
 
 ---
 
-# 🏋️ CHAPTER 2: Finetuning — Teaching AI Your Specific Domain
+# CHAPTER 2: Finetuning — Teaching AI Your Specific Domain
 
 ---
 
