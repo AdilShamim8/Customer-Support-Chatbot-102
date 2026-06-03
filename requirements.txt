@@ -1,4 +1,4 @@
-# Core LLM & AI
+# ── Core LLM & AI ────────────────────────────────────────────────────────────
 openai>=1.12.0
 anthropic>=0.20.0
 transformers>=4.38.0
@@ -6,12 +6,12 @@ torch>=2.2.0
 sentence-transformers>=2.5.0
 tiktoken>=0.6.0
 
-# Vector Stores
+# ── Vector Stores ─────────────────────────────────────────────────────────────
 chromadb>=0.4.22
 faiss-cpu>=1.7.4
 pinecone-client>=3.0.0
 
-# Document Parsing
+# ── Document Parsing ──────────────────────────────────────────────────────────
 pypdf2>=3.0.1
 pdfplumber>=0.10.3
 unstructured>=0.12.0
@@ -20,16 +20,15 @@ beautifulsoup4>=4.12.3
 lxml>=5.1.0
 markdown>=3.5.2
 
-# Keyword Search
+# ── Keyword Search ────────────────────────────────────────────────────────────
 rank-bm25>=0.2.2
-whoosh>=2.7.4
 elasticsearch>=8.12.0
 
-# Reranking
+# ── Reranking ─────────────────────────────────────────────────────────────────
 cohere>=5.0.0
 flashrank>=0.2.0
 
-# API & Web
+# ── API & Web ─────────────────────────────────────────────────────────────────
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 pydantic>=2.6.0
@@ -37,31 +36,44 @@ pydantic-settings>=2.2.0
 httpx>=0.27.0
 python-multipart>=0.0.9
 
-# Database
+# ── Database ──────────────────────────────────────────────────────────────────
 redis>=5.0.1
 sqlalchemy>=2.0.27
 alembic>=1.13.1
 asyncpg>=0.29.0
 
-# Monitoring & Logging
+# ── Monitoring & Observability ────────────────────────────────────────────────
 structlog>=24.1.0
 prometheus-fastapi-instrumentator>=6.1.0
+prometheus-client>=0.20.0
 opentelemetry-api>=1.23.0
+opentelemetry-sdk>=1.23.0
+opentelemetry-exporter-otlp-proto-grpc>=1.23.0
+opentelemetry-instrumentation-fastapi>=0.44b0
+opentelemetry-instrumentation-httpx>=0.44b0
+opentelemetry-instrumentation-redis>=0.44b0
 
-# Evaluation
+# ── Evaluation ────────────────────────────────────────────────────────────────
 ragas>=0.1.7
 deepeval>=0.20.0
 nltk>=3.8.1
 rouge-score>=0.1.2
 
-# Fine-tuning / PEFT
+# ── Fine-Tuning / PEFT ────────────────────────────────────────────────────────
 peft>=0.10.0
 datasets>=2.18.0
 accelerate>=0.27.0
 bitsandbytes>=0.43.0
 trl>=0.8.1
 
-# Utilities
+# ── Load Testing ──────────────────────────────────────────────────────────────
+locust>=2.24.0
+
+# ── Security ──────────────────────────────────────────────────────────────────
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv>=1.0.1
 tenacity>=8.2.3
 numpy>=1.26.4
