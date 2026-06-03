@@ -465,7 +465,7 @@ customer-support-chatbot/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourorg/customer-support-chatbot.git
+git clone https://github.com/AdilShamim8/Customer-Support-Chatbot-102.git
 cd customer-support-chatbot
 
 # 2. Configure environment
@@ -503,7 +503,7 @@ open http://localhost:9090   # Prometheus
 
 ```bash
 # 1. Clone and set up Python environment
-git clone https://github.com/yourorg/customer-support-chatbot.git
+git clone https://github.com/AdilShamim8/Customer-Support-Chatbot-102.git
 cd customer-support-chatbot
 
 python -m venv venv
