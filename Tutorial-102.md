@@ -1,4 +1,4 @@
-# Complete Tutorial: Build a Customer Support Chatbot using RAGs and Prompt Engineering
+# Complete Tutorial Project 2: Build a Customer Support Chatbot using RAGs and Prompt Engineering
 
 ### The Most Beginner-Friendly, End-to-End, Deep Tutorial — DEFINITIVE VERSION
 
