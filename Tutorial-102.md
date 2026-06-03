@@ -181,7 +181,7 @@ Want me to start a warranty claim for you right now?"
 
 ---
 
-# 📚 CHAPTER 1: Overview of Adaptation Techniques
+# CHAPTER 1: Overview of Adaptation Techniques
 
 ---
 
@@ -718,7 +718,7 @@ Fix: Include diverse, realistic training examples
 
 ---
 
-# ⚡ CHAPTER 3: Parameter-Efficient Fine-Tuning (PEFT)
+# CHAPTER 3: Parameter-Efficient Fine-Tuning (PEFT)
 
 ---
 
@@ -1114,7 +1114,7 @@ FAILURE 4: Training Data Not Representative
 
 ---
 
-# 🦾 CHAPTER 5: LoRA — The Most Popular PEFT Technique
+# CHAPTER 5: LoRA — The Most Popular PEFT Technique
 
 ---
 
@@ -1538,7 +1538,7 @@ VERDICT: For our customer support chatbot → USE LoRA
 
 ---
 
-# 🎨 CHAPTER 6: Prompt Engineering — The Art of Talking to AI
+# CHAPTER 6: Prompt Engineering — The Art of Talking to AI
 
 ---
 
