@@ -12,14 +12,6 @@
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat)](https://github.com/psf/black)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![CI](https://github.com/yourorg/customer-support-chatbot/actions/workflows/ci.yml/badge.svg)](https://github.com/yourorg/customer-support-chatbot/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/yourorg/customer-support-chatbot)](https://codecov.io/gh/yourorg/customer-support-chatbot)
-[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/)
-
 <!-- <p align="center">
   <img src="docs/assets/architecture.png" alt="Architecture Diagram" width="800"/>
 </p> -->
