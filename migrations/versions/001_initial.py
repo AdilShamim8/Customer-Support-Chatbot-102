@@ -1,7 +1,7 @@
 """Initial database schema for conversation storage.
 
 Revision ID: 001
-Create Date: 2024-01-01 00:00:00
+Create Date: 2026-01-01 00:00:00
 """
 
 from alembic import op
