@@ -3,6 +3,15 @@
 # Project 2 - Build a Customer Support Chatbot using RAGs and Prompt Engineering
 ### Production-Grade RAG System with Prompt Engineering & PEFT Fine-Tuning
 
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991.svg?style=flat&logo=openai&logoColor=white)](https://openai.com/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E.svg?style=flat)](LICENSE)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat)](https://github.com/psf/black)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
+
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -11,9 +20,9 @@
 [![Coverage](https://img.shields.io/codecov/c/github/yourorg/customer-support-chatbot)](https://codecov.io/gh/yourorg/customer-support-chatbot)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/)
 
-<p align="center">
+<!-- <p align="center">
   <img src="docs/assets/architecture.png" alt="Architecture Diagram" width="800"/>
-</p>
+</p> -->
 
 **A fully production-ready AI customer support system built on**
 **Retrieval-Augmented Generation (RAG), advanced prompt engineering,**
