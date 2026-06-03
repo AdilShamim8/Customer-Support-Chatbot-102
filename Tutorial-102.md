@@ -1675,7 +1675,7 @@ A COMPLETE PROMPT HAS THESE COMPONENTS:
 
 ---
 
-# 🎯 CHAPTER 7: Zero-Shot Prompting
+# CHAPTER 7: Zero-Shot Prompting
 
 ---
 
@@ -1819,7 +1819,7 @@ DIAGNOSTIC:
 
 ---
 
-# 🎯 CHAPTER 8: Few-Shot Prompting
+# CHAPTER 8: Few-Shot Prompting
 
 ---
 
@@ -2110,7 +2110,7 @@ HYBRID APPROACH (often best):
 
 ---
 
-# 🧠 CHAPTER 9: Chain-of-Thought Prompting
+# CHAPTER 9: Chain-of-Thought Prompting
 
 ---
 
@@ -2493,7 +2493,7 @@ FIX: Always filter CoT to only show the FINAL ANSWER to customers.
 
 ---
 
-# 👥 CHAPTER 10: Role-Specific and User-Context Prompting
+# CHAPTER 10: Role-Specific and User-Context Prompting
 
 ---
 
@@ -2915,7 +2915,7 @@ Rule: Include last 3 orders, last 3 tickets, current product info
 
 ---
 
-# 🎓 PART 1 — COMPLETE INTERVIEW MASTERY
+# PART 1 — COMPLETE INTERVIEW MASTERY
 
 ---
 
@@ -3579,7 +3579,7 @@ Text Extract        (AWS Textract)
 
 ---
 
-# ✂️ CHAPTER 13: Chunking Strategies
+# CHAPTER 13: Chunking Strategies
 
 ---
 
@@ -3942,7 +3942,7 @@ RECOMMENDATION FOR OUR CHATBOT:
 
 ---
 
-# 📊 CHAPTER 14: Indexing Strategies
+# CHAPTER 14: Indexing Strategies
 
 ---
 
@@ -4213,7 +4213,7 @@ When customer asks "How do I get my money back?":
 
 ---
 
-# 🧮 CHAPTER 15: Embedding Models
+# CHAPTER 15: Embedding Models
 
 ---
 
@@ -4395,7 +4395,7 @@ IMPORTANT: Use the SAME embedding model for BOTH:
 
 ---
 
-# 🔍 CHAPTER 16: Search Methods
+# CHAPTER 16: Search Methods
 
 ---
 
@@ -4638,7 +4638,7 @@ Re-ranking correctly promoted the MOST SPECIFIC chunk to #1!
 
 ---
 
-# 🎯 CHAPTER 17: Prompt Engineering for RAGs
+# CHAPTER 17: Prompt Engineering for RAGs
 
 ---
 
@@ -4890,7 +4890,7 @@ Or use the "Reverse Lost-in-Middle" ordering:
 
 ---
 
-# 🏋️ CHAPTER 18: RAFT — Training Technique for RAGs
+# CHAPTER 18: RAFT — Training Technique for RAGs
 
 ---
 
@@ -5131,7 +5131,7 @@ DON'T USE RAFT WHEN:
 
 ---
 
-# 📏 CHAPTER 19: Evaluation
+# CHAPTER 19: Evaluation
 
 ---
 
@@ -5566,7 +5566,7 @@ Step 7: DEPLOY with confidence! ✅
 
 ---
 
-# 🏗️ CHAPTER 20: RAGs Overall Design
+# CHAPTER 20: RAGs Overall Design
 
 ---
 
@@ -5828,7 +5828,7 @@ Fix: Lower temperature (0.0-0.1 for factual Q&A),
 
 ---
 
-# 🎓 COMPLETE INTERVIEW MASTERY — PART 2
+# COMPLETE INTERVIEW MASTERY — PART 2
 
 ---
 
