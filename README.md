@@ -18,6 +18,8 @@
 **A fully production-ready AI customer support system built on**
 **Retrieval-Augmented Generation (RAG), advanced prompt engineering,**
 **hybrid search, reranking, and parameter-efficient fine-tuning.**
+> ### To better understand this project, first visit this link for a visualization of the project and what we built: [Link](https://ragchatbot1.space-z.ai/)
+> ### Then, if you want to learn each topic in a tutorial format, read this file thoroughly: [Link](https://github.com/AdilShamim8/Customer-Support-Chatbot-102/blob/main/Tutorial-102.md)
 
 [Quick Start](#-quick-start) •
 [Architecture](#-architecture) •
