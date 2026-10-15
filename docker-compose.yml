@@ -32,6 +32,13 @@ services:
       chromadb:
         condition: service_started
     restart: unless-stopped
+    healthcheck:
+      # Container liveness contract: /live (no dependency checks)
+      test: ["CMD", "curl", "-f", "http://localhost:8000/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     networks:
       - chatbot_network
     deploy:
