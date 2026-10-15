@@ -1,0 +1,67 @@
+# OpenTelemetry Collector - traces flow: app (OTLP) -> collector -> backend.
+# The collector decouples the app from backend choice (Tempo, Jaeger, X-Ray)
+# and adds tail-based sampling: keep 100% of ERROR traces, 10% of the rest.
+# Sampling at the app would lose exactly the traces you need during incidents.
+# (Plain collector config - mount into the otel-collector container.)
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Tail sampling: errors always kept, successes downsampled
+  tail_sampling:
+    decision_wait: 10s
+    policies:
+      - name: errors-always
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-traces-always
+        type: latency
+        latency:
+          threshold_ms: 3000
+      - name: baseline-sample
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
+  # Drop noisy health-check spans before they cost money
+  filter/health:
+    traces:
+      span:
+        - 'attributes["http.route"] == "/health"'
+        - 'attributes["http.route"] == "/live"'
+        - 'attributes["http.route"] == "/ready"'
+        - 'attributes["http.route"] == "/metrics"'
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+exporters:
+  # Point at your backend; file exporter kept for local debugging
+  otlp/tempo:
+    endpoint: tempo.observability.svc.cluster.local:4317
+    tls:
+      insecure: true
+  logging:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/health, tail_sampling, batch]
+      exporters: [otlp/tempo, logging]
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
