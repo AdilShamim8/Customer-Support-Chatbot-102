@@ -67,6 +67,9 @@ install it once and most CI failures never happen.
 5. Security-sensitive paths (`src/api/auth.py`, `deploy/`, workflows,
    `migrations/`) require CODEOWNERS review by design.
 
+Reviewer or reviewee: the ten blocking questions live in
+[docs/development/code-review-checklist.md](docs/development/code-review-checklist.md).
+
 ## Architectural Decisions
 
 If your change alters how the system works (not just what it does) -
