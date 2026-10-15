@@ -14,9 +14,11 @@ Last updated: 2026-10-15 · Build locally: `mkdocs serve`
 | 🧠 How prompts are engineered | [Prompting Playbook](prompting/playbook.md) |
 | 📏 How quality is measured | [Evaluation Metrics](evaluation/metrics.md) |
 | 🚨 How incidents are handled | [Runbooks](runbooks/README.md) |
+| 📟 What on-call means | [On-Call Guide](operations/on-call.md) |
 | 🎯 What we promise users | [SLOs](operations/slo.md) |
 | 🔐 What the attackers see | [Threat Model](security/threat-model.md) |
 | 🧑‍💻 First contribution | [Getting Started](development/getting-started.md) |
+| ✅ How reviews happen | [Code Review Checklist](development/code-review-checklist.md) |
 | 🔧 Something is broken | [Troubleshooting](development/troubleshooting.md) |
 
 ## Architecture — how it is built
