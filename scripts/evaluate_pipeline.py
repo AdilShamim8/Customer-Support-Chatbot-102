@@ -17,9 +17,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import structlog
+
 from configs.logging_config import setup_logging
 from src.evaluation.evaluator import EvaluationSample, RAGEvaluator
-from src.pipeline.rag_pipeline import RAGPipeline, RAGConfig
+from src.pipeline.rag_pipeline import RAGConfig, RAGPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -51,10 +52,10 @@ SAMPLE_TEST_SET = [
 ]
 
 
-def load_test_set(path: Optional[str]) -> list[dict]:
+def load_test_set(path: str | None) -> list[dict]:
     if path and Path(path).exists():
         samples = []
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -143,7 +144,7 @@ def main():
         breaches = [
             f"{name}={aggregate.get(name, 'n/a')} < {floor}"
             for name, floor in thresholds.items()
-            if isinstance(aggregate.get(name), (int, float)) and aggregate[name] < floor
+            if isinstance(aggregate.get(name), int | float) and aggregate[name] < floor
         ]
         if breaches:
             logger.error("EVAL GATE FAILED", breaches=breaches)
@@ -156,5 +157,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from typing import Optional
     main()

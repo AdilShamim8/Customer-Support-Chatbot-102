@@ -76,5 +76,7 @@ class TestLabelCardinality:
     def test_store_type_is_bounded(self):
         # store_type values come from an enum-like set, never user input
         allowed = {"hybrid", "vector", "keyword", "chroma", "faiss", "pinecone"}
+        # The recorded value must be part of the documented bounded set
+        assert "hybrid" in allowed
         # Recording with a known value must not raise
         m.MetricsInstrumentor.update_index_size(count=1, store_type="hybrid")

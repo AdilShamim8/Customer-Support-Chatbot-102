@@ -8,7 +8,6 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import structlog
@@ -18,7 +17,6 @@ from src.evaluation.metrics import (
     EvaluationResult,
     EvaluationSample,
     LLMJudge,
-    MetricScore,
     StatisticalMetrics,
 )
 from src.pipeline.rag_pipeline import RAGPipeline
@@ -151,8 +149,8 @@ class RAGEvaluator:
 
     def __init__(
         self,
-        rag_pipeline: Optional[RAGPipeline] = None,
-        llm_judge: Optional[LLMJudge] = None,
+        rag_pipeline: RAGPipeline | None = None,
+        llm_judge: LLMJudge | None = None,
         use_llm_metrics: bool = True,
         use_statistical_metrics: bool = True,
     ):
@@ -253,7 +251,7 @@ class RAGEvaluator:
         self,
         test_samples: list[EvaluationSample],
         dataset_name: str = "test_dataset",
-        max_samples: Optional[int] = None,
+        max_samples: int | None = None,
     ) -> EvaluationReport:
         """
         Evaluate the full RAG pipeline on a test dataset.
@@ -367,19 +365,19 @@ class RAGASEvaluator:
         questions: list[str],
         answers: list[str],
         contexts: list[list[str]],
-        ground_truths: Optional[list[str]] = None,
+        ground_truths: list[str] | None = None,
     ) -> dict:
         """Run RAGAS evaluation suite."""
         try:
+            from datasets import Dataset
             from ragas import evaluate
             from ragas.metrics import (
-                faithfulness,
                 answer_relevancy,
                 context_precision,
                 context_recall,
                 context_relevancy,
+                faithfulness,
             )
-            from datasets import Dataset
 
             data = {
                 "question": questions,

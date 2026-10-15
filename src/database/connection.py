@@ -4,8 +4,8 @@ Current setup has no connection pool configuration.
 Under load, this causes connection exhaustion.
 """
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import structlog
 from sqlalchemy.ext.asyncio import (
@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool, QueuePool
 
 from configs.settings import settings
 

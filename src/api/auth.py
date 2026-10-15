@@ -12,11 +12,7 @@ No auth = anyone can:
 # Complete implementation:
 
 import hashlib
-import hmac
-import time
 from enum import Enum
-from functools import wraps
-from typing import Optional
 
 import structlog
 from fastapi import Depends, HTTPException, Security, status
@@ -51,7 +47,7 @@ class AuthenticatedUser:
         user_id: str,
         role: UserRole,
         api_key_prefix: str,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         self.user_id = user_id
         self.role = role
@@ -84,7 +80,7 @@ class APIKeyStore:
         api_key: str,
         user_id: str,
         role: UserRole,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> None:
         """Store a hashed API key."""
         hashed = self._hash_key(api_key)
@@ -92,7 +88,7 @@ class APIKeyStore:
 
     def validate_key(
         self, api_key: str
-    ) -> Optional[AuthenticatedUser]:
+    ) -> AuthenticatedUser | None:
         """Validate API key and return user if valid."""
         hashed = self._hash_key(api_key)
         entry = self._keys.get(hashed)
@@ -147,8 +143,8 @@ def init_api_keys(settings) -> None:
 # ── FastAPI Dependencies ───────────────────────────────────────────────────
 
 async def get_current_user(
-    api_key: Optional[str] = Security(API_KEY_HEADER),
-    bearer: Optional[HTTPAuthorizationCredentials] = Security(HTTP_BEARER),
+    api_key: str | None = Security(API_KEY_HEADER),
+    bearer: HTTPAuthorizationCredentials | None = Security(HTTP_BEARER),
 ) -> AuthenticatedUser:
     """
     Dependency: validates API key from header or Bearer token.

@@ -6,7 +6,6 @@ Need Redis-backed sliding window rate limiter.
 """
 
 import time
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
@@ -32,6 +31,7 @@ class RedisRateLimiter:
     def _get_redis(self):
         if self._redis is None:
             import redis
+
             from configs.settings import settings
             self._redis = redis.from_url(
                 settings.redis_url,

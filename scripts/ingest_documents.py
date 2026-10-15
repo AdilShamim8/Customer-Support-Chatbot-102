@@ -20,10 +20,10 @@ from tqdm import tqdm
 
 from configs.logging_config import setup_logging
 from configs.settings import settings
-from src.parsing.document_parser import DocumentParserFactory, ParseStrategy
-from src.parsing.chunking import ChunkingStrategy, ChunkerFactory
+from src.indexing.embeddings import EmbeddingModelFactory
 from src.indexing.hybrid_index import HybridIndex
-from src.indexing.embeddings import EmbeddingModelFactory, EmbeddingProvider
+from src.parsing.chunking import ChunkerFactory, ChunkingStrategy
+from src.parsing.document_parser import DocumentParserFactory, ParseStrategy
 
 logger = structlog.get_logger(__name__)
 
@@ -40,7 +40,7 @@ def ingest_documents(
 ) -> dict:
     """
     Full ingestion pipeline: Parse → Chunk → Embed → Index.
-    
+
     Returns:
         Summary statistics dict
     """
@@ -51,17 +51,17 @@ def ingest_documents(
         "total_chunks": 0,
         "indexed_chunks": 0,
     }
-    
+
     # Collect all supported files
     source_path = Path(source_dir)
     if not source_path.exists():
         raise FileNotFoundError(f"Source directory not found: {source_dir}")
-    
+
     files = [
         f for f in source_path.rglob("*")
         if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
     ]
-    
+
     stats["files_found"] = len(files)
     logger.info(
         "Starting ingestion",
@@ -70,11 +70,11 @@ def ingest_documents(
         parse_strategy=parse_strategy.value,
         chunk_strategy=chunk_strategy.value,
     )
-    
+
     if dry_run:
         logger.info("DRY RUN - no indexing will occur")
         return stats
-    
+
     # Initialize components
     embedding_model = EmbeddingModelFactory.create_default()
     hybrid_index = HybridIndex(embedding_model=embedding_model)
@@ -83,7 +83,7 @@ def ingest_documents(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
-    
+
     # Process files
     for file_path in tqdm(files, desc="Ingesting documents"):
         try:
@@ -91,26 +91,26 @@ def ingest_documents(
             logger.info("Parsing document", path=str(file_path))
             doc = DocumentParserFactory.parse(file_path, strategy=parse_strategy)
             stats["files_parsed"] += 1
-            
+
             if not doc.content.strip():
                 logger.warning("Empty document, skipping", path=str(file_path))
                 continue
-            
+
             # Step 2: Chunk
             chunks = chunker.chunk(doc)
             stats["total_chunks"] += len(chunks)
-            
+
             logger.info(
                 "Document parsed and chunked",
                 doc_id=doc.doc_id,
                 title=doc.title,
                 chunks=len(chunks),
             )
-            
+
             # Step 3: Index
             indexed_ids = hybrid_index.add_chunks(chunks)
             stats["indexed_chunks"] += len(indexed_ids)
-            
+
         except Exception as e:
             stats["files_failed"] += 1
             logger.error(
@@ -119,14 +119,14 @@ def ingest_documents(
                 error=str(e),
                 exc_info=True,
             )
-    
+
     logger.info("Ingestion complete", **stats)
     return stats
 
 
 def main():
     setup_logging()
-    
+
     parser = argparse.ArgumentParser(description="Ingest documents into the RAG index")
     parser.add_argument(
         "--source-dir",
@@ -161,9 +161,9 @@ def main():
         action="store_true",
         help="Parse without indexing",
     )
-    
+
     args = parser.parse_args()
-    
+
     stats = ingest_documents(
         source_dir=Path(args.source_dir),
         parse_strategy=ParseStrategy(args.parse_strategy),
@@ -172,7 +172,7 @@ def main():
         chunk_overlap=args.chunk_overlap,
         dry_run=args.dry_run,
     )
-    
+
     print("\n=== Ingestion Summary ===")
     for key, value in stats.items():
         print(f"  {key}: {value}")

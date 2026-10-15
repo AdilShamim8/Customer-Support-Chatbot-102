@@ -1,4 +1,4 @@
 """API route modules."""
-from src.api.routes import chat, admin, health
+from src.api.routes import admin, chat, health
 
 __all__ = ["chat", "admin", "health"]

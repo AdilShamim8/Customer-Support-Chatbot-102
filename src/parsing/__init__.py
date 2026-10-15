@@ -1,14 +1,14 @@
 """Document parsing and chunking modules."""
-from src.parsing.document_parser import (
-    DocumentParserFactory,
-    ParsedDocument,
-    ParseStrategy,
-    DocumentType,
-)
 from src.parsing.chunking import (
     ChunkerFactory,
     ChunkingStrategy,
     DocumentChunk,
+)
+from src.parsing.document_parser import (
+    DocumentParserFactory,
+    DocumentType,
+    ParsedDocument,
+    ParseStrategy,
 )
 
 __all__ = [

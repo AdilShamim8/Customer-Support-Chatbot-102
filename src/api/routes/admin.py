@@ -2,19 +2,20 @@
 Admin API routes - document management, evaluation, and statistics.
 """
 
-import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
+import structlog
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 
 from src.api.schemas import (
     EvaluationRequest,
     EvaluationResponse,
     StatsResponse,
 )
-from src.evaluation.evaluator import RAGEvaluator, EvaluationSample
+from src.evaluation.evaluator import EvaluationSample, RAGEvaluator
+from src.parsing.chunking import ChunkerFactory, ChunkingStrategy
 from src.parsing.document_parser import DocumentParserFactory, ParseStrategy
-from src.parsing.chunking import ChunkingStrategy, ChunkerFactory
 from src.pipeline.rag_pipeline import RAGPipeline
 
 logger = structlog.get_logger(__name__)

@@ -1,6 +1,5 @@
 """Unit tests for Reciprocal Rank Fusion."""
 
-import pytest
 from src.indexing.hybrid_index import reciprocal_rank_fusion
 from src.indexing.vector_store import SearchResult
 
@@ -14,7 +13,7 @@ def make_results(chunk_ids: list[str], scores: list[float]) -> list[SearchResult
             score=score,
             rank=i,
         )
-        for i, (cid, score) in enumerate(zip(chunk_ids, scores))
+        for i, (cid, score) in enumerate(zip(chunk_ids, scores, strict=False))
     ]
 
 

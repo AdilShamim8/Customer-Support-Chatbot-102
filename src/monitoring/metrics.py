@@ -4,7 +4,7 @@ Standard HTTP metrics are not enough for a RAG system.
 You need RAG-specific metrics to understand quality in production.
 """
 
-from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_client import Counter, Gauge, Histogram
 
 # ── RAG Pipeline Metrics ───────────────────────────────────────────────────
 
@@ -139,13 +139,15 @@ class MetricsInstrumentor:
             model=model,
             stream=str(streamed),
         ).observe(latency_seconds)
+        # token_type here is a Prometheus label ("prompt"/"completion"),
+        # not a credential - S106 is a false positive on this shape.
         LLM_TOKENS_USED.labels(
             model=model,
-            token_type="prompt",
+            token_type="prompt",  # noqa: S106
         ).inc(prompt_tokens)
         LLM_TOKENS_USED.labels(
             model=model,
-            token_type="completion",
+            token_type="completion",  # noqa: S106
         ).inc(completion_tokens)
         LLM_COST_USD.labels(model=model).inc(cost_usd)
 

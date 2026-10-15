@@ -4,8 +4,8 @@ You cannot claim production-ready without load test results.
 """
 
 import random
-from locust import HttpUser, between, task
 
+from locust import HttpUser, between, task
 
 SAMPLE_QUESTIONS = [
     "What is your return policy?",

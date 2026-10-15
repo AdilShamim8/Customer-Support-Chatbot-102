@@ -1,12 +1,12 @@
 """Unit tests for chunking strategies."""
 
 import pytest
+
 from src.parsing.chunking import (
-    ChunkingStrategy,
     ChunkerFactory,
+    ChunkingStrategy,
     FixedSizeChunker,
     HierarchicalChunker,
-    SentenceChunker,
 )
 from src.parsing.document_parser import DocumentType, ParsedDocument
 

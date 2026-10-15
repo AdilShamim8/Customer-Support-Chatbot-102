@@ -4,7 +4,8 @@ All API contracts are defined here.
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -27,14 +28,14 @@ class PromptStrategyEnum(str, Enum):
 
 class UserContext(BaseModel):
     """Optional user profile context passed with each request."""
-    customer_name: Optional[str] = None
+    customer_name: str | None = None
     account_tier: SupportTier = SupportTier.STANDARD
-    customer_since: Optional[str] = None
+    customer_since: str | None = None
     preferred_language: str = "en"
     technical_level: str = "beginner"
     open_tickets: int = 0
     recent_purchases: list[str] = Field(default_factory=list)
-    special_notes: Optional[str] = None
+    special_notes: str | None = None
 
     class Config:
         use_enum_values = True
@@ -48,12 +49,12 @@ class ChatRequest(BaseModel):
         max_length=2000,
         description="The customer's message or question",
     )
-    conversation_id: Optional[str] = Field(
+    conversation_id: str | None = Field(
         None,
         description="Session ID for multi-turn conversation. "
                     "If not provided, a new session is created.",
     )
-    user_context: Optional[UserContext] = Field(
+    user_context: UserContext | None = Field(
         None,
         description="Optional user profile for personalized responses",
     )
@@ -83,17 +84,17 @@ class FeedbackRequest(BaseModel):
     conversation_id: str
     message_index: int = Field(..., ge=0)
     rating: int = Field(..., ge=1, le=5)
-    feedback_text: Optional[str] = Field(None, max_length=1000)
+    feedback_text: str | None = Field(None, max_length=1000)
     was_helpful: bool = True
-    issue_category: Optional[str] = None
+    issue_category: str | None = None
 
 
 class DocumentIngestRequest(BaseModel):
     """Request to ingest a document from URL or base64."""
-    url: Optional[str] = None
-    content: Optional[str] = None   # Base64 encoded content
-    filename: Optional[str] = None
-    doc_type: Optional[str] = None
+    url: str | None = None
+    content: str | None = None   # Base64 encoded content
+    filename: str | None = None
+    doc_type: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     chunk_strategy: str = "hierarchical"
 
@@ -130,7 +131,7 @@ class ChatResponse(BaseModel):
         le=1.0,
         description="Confidence score based on retrieval relevance",
     )
-    reformulated_query: Optional[str] = Field(
+    reformulated_query: str | None = Field(
         None,
         description="Reformulated query used for retrieval (if conversational)",
     )

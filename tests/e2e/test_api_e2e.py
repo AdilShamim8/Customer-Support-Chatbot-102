@@ -4,10 +4,10 @@ Requires the full application stack running.
 Run with: pytest tests/e2e/ --base-url http://localhost:8000
 """
 
-import pytest
-import httpx
 import uuid
 
+import httpx
+import pytest
 
 BASE_URL = "http://localhost:8000"
 

@@ -105,8 +105,8 @@ def verify(index_name: str | None, expect_chunks: int | None) -> int:
 
     # 4: both halves populated (hybrid contract)
     try:
-        from src.indexing.hybrid_index import HybridIndex
         from src.indexing.embeddings import EmbeddingModelFactory
+        from src.indexing.hybrid_index import HybridIndex
 
         hybrid = HybridIndex(embedding_model=EmbeddingModelFactory.create_default())
         stats = hybrid.get_stats()

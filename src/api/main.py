@@ -4,8 +4,8 @@ Initializes all components and configures the API server.
 """
 
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import structlog
 from fastapi import FastAPI
@@ -17,15 +17,15 @@ from configs.settings import settings
 from src import __version__
 from src.api.errors import register_error_handlers
 from src.api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
-from src.api.routes import chat, admin, health
+from src.api.routes import admin, chat, health
 from src.generation.llm_client import LLMClientFactory
 from src.generation.prompt_engine import PromptConfig, PromptStrategy
 from src.indexing.embeddings import EmbeddingModelFactory
 from src.indexing.hybrid_index import HybridIndex
 from src.pipeline.conversation import ConversationManager
 from src.pipeline.rag_pipeline import RAGConfig, RAGPipeline
-from src.retrieval.retriever import Retriever, RetrievalConfig
 from src.retrieval.reranker import RerankerFactory
+from src.retrieval.retriever import RetrievalConfig, Retriever
 
 # Setup logging first
 setup_logging()
@@ -198,7 +198,9 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "src.api.main:app",
-        host="0.0.0.0",
+        # Binding all interfaces is container-standard: exposure is bounded
+        # by the K8s NetworkPolicy and the edge ingress, not by the socket.
+        host="0.0.0.0",  # noqa: S104
         port=8000,
         reload=settings.is_development,
         log_config=None,    # Use our structlog config

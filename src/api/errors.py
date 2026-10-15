@@ -14,7 +14,7 @@ semantics, imported by nothing. That duplication was removed 2026-10-15;
 the envelope and the hierarchy are now one design, not two.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from fastapi import FastAPI, Request
@@ -62,7 +62,7 @@ class ProblemDetail(BaseModel):
     instance: str       # URI reference identifying specific occurrence
     code: str           # Machine-readable application error code
     transient: bool     # Client retryability signal (ADR-0004)
-    errors: Optional[list[dict[str, Any]]] = None  # Field-level errors
+    errors: list[dict[str, Any]] | None = None  # Field-level errors
 
     class Config:
         use_enum_values = True
@@ -74,7 +74,7 @@ def make_problem_response(
     detail: str,
     status_code: int,
     transient: bool = False,
-    errors: Optional[list] = None,
+    errors: list | None = None,
 ) -> JSONResponse:
     """Create an RFC 7807 compliant error response."""
     problem: dict[str, Any] = {

@@ -74,7 +74,7 @@ class TestGetCurrentUserDependency:
     async def test_invalid_key_rejected_401(self):
         from fastapi import HTTPException
 
-        from src.api.auth import get_current_user, _key_store
+        from src.api.auth import _key_store, get_current_user
 
         _key_store._keys.clear()  # isolate from global state
         with pytest.raises(HTTPException) as exc_info:

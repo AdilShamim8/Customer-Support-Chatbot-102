@@ -1,6 +1,6 @@
 """Retrieval modules: retriever and reranker."""
-from src.retrieval.retriever import Retriever, RetrievalConfig, RetrievalResult
 from src.retrieval.reranker import RerankerFactory
+from src.retrieval.retriever import RetrievalConfig, RetrievalResult, Retriever
 
 __all__ = [
     "Retriever",

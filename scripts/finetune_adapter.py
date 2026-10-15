@@ -21,11 +21,17 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # Only needed for the return annotation of load_training_data(); the
+    # real import stays inside the function so partial installs still work.
+    import datasets
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import structlog
+
 from configs.logging_config import setup_logging
 
 logger = structlog.get_logger(__name__)
@@ -37,7 +43,7 @@ def get_lora_config(
     r: int = 16,
     lora_alpha: int = 32,
     lora_dropout: float = 0.05,
-    target_modules: Optional[list[str]] = None,
+    target_modules: list[str] | None = None,
 ):
     """
     Create LoRA configuration.
@@ -96,7 +102,7 @@ def load_training_data(dataset_path: str) -> "datasets.Dataset":
     from datasets import Dataset
 
     records = []
-    with open(dataset_path, "r", encoding="utf-8") as f:
+    with open(dataset_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -162,15 +168,14 @@ def train_lora(
         gradient_accumulation_steps: Steps before optimizer update
     """
     import torch
+    from peft import get_peft_model, prepare_model_for_kbit_training
     from transformers import (
         AutoModelForCausalLM,
         AutoTokenizer,
         BitsAndBytesConfig,
         TrainingArguments,
     )
-    from peft import get_peft_model, prepare_model_for_kbit_training
-    from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
-    from datasets import Dataset
+    from trl import SFTTrainer
 
     logger.info(
         "Starting LoRA fine-tuning",
@@ -314,14 +319,14 @@ def train_lora(
 
 # ─── Inference with LoRA Adapter ─────────────────────────────────────────────
 
-def load_lora_model(adapter_path: str, base_model_name: Optional[str] = None):
+def load_lora_model(adapter_path: str, base_model_name: str | None = None):
     """
     Load a fine-tuned LoRA adapter for inference.
     Can be merged with base model or kept as adapter.
     """
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     # Load training metadata if available
     metadata_path = Path(adapter_path) / "training_metadata.json"
@@ -356,13 +361,12 @@ def load_lora_model(adapter_path: str, base_model_name: Optional[str] = None):
 def merge_and_export(
     adapter_path: str,
     output_path: str,
-    base_model_name: Optional[str] = None,
+    base_model_name: str | None = None,
 ):
     """
     Merge LoRA weights into the base model for faster inference.
     Merged model has no PEFT overhead.
     """
-    import torch
 
     model, tokenizer = load_lora_model(adapter_path, base_model_name)
 
@@ -432,8 +436,8 @@ def main():
     # Optionally generate RAFT training data first
     if args.generate_raft_data:
         logger.info("Generating RAFT training data...")
-        from src.generation.raft import RAFTDataGenerator
         from src.generation.llm_client import LLMClientFactory
+        from src.generation.raft import RAFTDataGenerator
 
         generator = RAFTDataGenerator(
             llm_client=LLMClientFactory.create_default(),

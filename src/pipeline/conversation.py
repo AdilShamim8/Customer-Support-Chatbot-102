@@ -8,7 +8,6 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 import structlog
 
@@ -84,7 +83,7 @@ class Conversation:
         return conv
 
     @classmethod
-    def new(cls, user_context: Optional[dict] = None) -> "Conversation":
+    def new(cls, user_context: dict | None = None) -> "Conversation":
         return cls(
             conversation_id=str(uuid.uuid4()),
             user_context=user_context or {},
@@ -121,7 +120,7 @@ class ConversationManager:
     def get_or_create(
         self,
         conversation_id: str,
-        user_context: Optional[dict] = None,
+        user_context: dict | None = None,
     ) -> Conversation:
         existing = self.get(conversation_id)
         if existing:
@@ -134,7 +133,7 @@ class ConversationManager:
         self.save(new_conv)
         return new_conv
 
-    def get(self, conversation_id: str) -> Optional[Conversation]:
+    def get(self, conversation_id: str) -> Conversation | None:
         if self._redis:
             try:
                 key = self._redis_key(conversation_id)
@@ -173,7 +172,7 @@ class ConversationManager:
         self._memory_store.pop(conversation_id, None)
 
     def create_new(
-        self, user_context: Optional[dict] = None
+        self, user_context: dict | None = None
     ) -> Conversation:
         conv = Conversation.new(user_context=user_context)
         self.save(conv)

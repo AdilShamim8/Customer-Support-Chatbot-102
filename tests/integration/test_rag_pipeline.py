@@ -3,14 +3,15 @@ Integration tests for the full RAG pipeline.
 Uses mocked LLM and in-memory stores.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from src.pipeline.rag_pipeline import RAGPipeline, RAGConfig
-from src.pipeline.conversation import ConversationManager
-from src.retrieval.retriever import Retriever, RetrievalResult
-from src.indexing.vector_store import SearchResult
+import pytest
+
 from src.generation.llm_client import LLMResponse
+from src.indexing.vector_store import SearchResult
+from src.pipeline.conversation import ConversationManager
+from src.pipeline.rag_pipeline import RAGConfig, RAGPipeline
+from src.retrieval.retriever import RetrievalResult, Retriever
 
 
 @pytest.fixture
@@ -56,7 +57,6 @@ def rag_pipeline(mock_retrieval_result, mock_llm_response):
     mock_llm = MagicMock()
     mock_llm.complete.return_value = mock_llm_response
 
-    import asyncio
     async def async_complete(*args, **kwargs):
         return mock_llm_response
     mock_llm.acomplete = async_complete

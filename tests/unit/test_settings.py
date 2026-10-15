@@ -6,7 +6,7 @@ become typed values, production/dev predicates work, and the CORS
 allow-list follows the security policy (never wildcard in production).
 """
 
-from configs.settings import Environment, Settings
+from configs.settings import Settings
 
 
 class TestEnvironmentPredicates:
@@ -23,8 +23,9 @@ class TestEnvironmentPredicates:
     def test_invalid_env_rejected(self):
         # A typo in APP_ENV must fail at boot, not at 3am in prod
         import pytest
+        from pydantic import ValidationError
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             Settings(_env_file=None, app_env="produciton")
 
 

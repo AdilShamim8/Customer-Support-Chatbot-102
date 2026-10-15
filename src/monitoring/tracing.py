@@ -6,6 +6,7 @@ Without distributed tracing you cannot debug:
 - Cross-service request flows
 """
 
+import structlog
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -14,8 +15,6 @@ from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-import structlog
 
 logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer("customer-support-chatbot")

@@ -5,9 +5,8 @@ All environment variables are validated and typed here.
 
 from enum import Enum
 from functools import lru_cache
-from typing import Optional
 
-from pydantic import Field, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,13 +44,13 @@ class Settings(BaseSettings):
     # Consumed by src/api/auth.py::init_api_keys - MUST exist here or
     # auth initialization raises AttributeError (caught by the env
     # contract test, 2026-10-15)
-    admin_api_key: Optional[str] = None
+    admin_api_key: str | None = None
 
     # LLM Configuration
     llm_provider: LLMProvider = LLMProvider.OPENAI
-    openai_api_key: Optional[str] = None
-    anthropic_api_key: Optional[str] = None
-    cohere_api_key: Optional[str] = None
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+    cohere_api_key: str | None = None
 
     # Model Names
     chat_model: str = "gpt-4-turbo-preview"
@@ -61,7 +60,7 @@ class Settings(BaseSettings):
 
     # Vector Store
     vector_store_type: VectorStoreType = VectorStoreType.CHROMA
-    pinecone_api_key: Optional[str] = None
+    pinecone_api_key: str | None = None
     pinecone_environment: str = "us-east-1-aws"
     pinecone_index_name: str = "customer-support"
     chroma_host: str = "localhost"
@@ -100,7 +99,7 @@ class Settings(BaseSettings):
     # Observability (names match documented ENABLE_TRACING / OTLP_ENDPOINT)
     enable_tracing: bool = False
     otlp_endpoint: str = "http://localhost:4317"
-    sentry_dsn: Optional[str] = None
+    sentry_dsn: str | None = None
     metrics_enabled: bool = True
 
     # Serving
@@ -152,7 +151,7 @@ class Settings(BaseSettings):
         return self.app_env in (Environment.DEVELOPMENT, Environment.TEST)
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Cached settings instance - call once, reuse everywhere."""
     return Settings()
