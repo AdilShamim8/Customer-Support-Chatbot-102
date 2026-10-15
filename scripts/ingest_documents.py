@@ -58,7 +58,8 @@ def ingest_documents(
         raise FileNotFoundError(f"Source directory not found: {source_dir}")
 
     files = [
-        f for f in source_path.rglob("*")
+        f
+        for f in source_path.rglob("*")
         if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
     ]
 

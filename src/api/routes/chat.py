@@ -10,12 +10,7 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from src.api.schemas import (
-    ChatRequest,
-    ChatResponse,
-    FeedbackRequest,
-    SourceReference,
-)
+from src.api.schemas import ChatRequest, ChatResponse, FeedbackRequest, SourceReference
 from src.generation.prompt_engine import PromptStrategy
 from src.pipeline.rag_pipeline import RAGPipeline
 
@@ -63,19 +58,13 @@ async def chat(
             strategy=PromptStrategy(request_body.prompt_strategy.value),
             include_few_shot=True,
             user_metadata=(
-                request_body.user_context.model_dump()
-                if request_body.user_context
-                else {}
+                request_body.user_context.model_dump() if request_body.user_context else {}
             ),
         ),
     )
 
     # Convert user_context to dict
-    user_context = (
-        request_body.user_context.model_dump()
-        if request_body.user_context
-        else None
-    )
+    user_context = request_body.user_context.model_dump() if request_body.user_context else None
 
     try:
         if request_body.stream:

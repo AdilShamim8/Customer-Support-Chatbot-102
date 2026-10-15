@@ -99,7 +99,7 @@ def main():
                 record.setdefault("_dataset", str(dataset_path))
         test_data.extend(loaded)
     if args.max_samples:
-        test_data = test_data[:args.max_samples]
+        test_data = test_data[: args.max_samples]
 
     samples = [
         EvaluationSample(

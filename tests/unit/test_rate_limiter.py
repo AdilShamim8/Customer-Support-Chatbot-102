@@ -33,16 +33,12 @@ def _request(headers=None, client_ip="203.0.113.7"):
 
 class TestClientIdentification:
     def test_api_key_takes_precedence_over_ip(self, limiter):
-        client_id = limiter._get_client_id(
-            _request({"X-API-Key": "sk-customer-abc123456789"})
-        )
+        client_id = limiter._get_client_id(_request({"X-API-Key": "sk-customer-abc123456789"}))
         # Key-based identity: fair limits follow the account, not the NAT IP
         assert client_id.startswith("apikey:")
 
     def test_forwarded_for_respected(self, limiter):
-        client_id = limiter._get_client_id(
-            _request({"X-Forwarded-For": "198.51.100.9, 10.0.0.1"})
-        )
+        client_id = limiter._get_client_id(_request({"X-Forwarded-For": "198.51.100.9, 10.0.0.1"}))
         assert "198.51.100.9" in client_id
 
     def test_falls_back_to_direct_ip(self, limiter):

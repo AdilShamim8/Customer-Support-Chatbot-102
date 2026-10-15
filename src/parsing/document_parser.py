@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 class ParseStrategy(str, Enum):
     RULE_BASED = "rule_based"
-    AI_BASED = "ai_based"       # Uses unstructured.io AI models
+    AI_BASED = "ai_based"  # Uses unstructured.io AI models
     HYBRID = "hybrid"
 
 
@@ -43,6 +43,7 @@ class DocumentType(str, Enum):
 @dataclass
 class ParsedDocument:
     """Represents a parsed document with metadata."""
+
     doc_id: str
     source_path: str
     doc_type: DocumentType
@@ -88,8 +89,9 @@ class BaseParser(ABC):
         """Basic text cleaning."""
         # Remove excessive whitespace
         import re
-        text = re.sub(r'\n{3,}', '\n\n', text)
-        text = re.sub(r' {2,}', ' ', text)
+
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r" {2,}", " ", text)
         text = text.strip()
         return text
 
@@ -125,12 +127,14 @@ class PDFParser(BaseParser):
                     if text:
                         cleaned = self._clean_text(text)
                         full_text_parts.append(cleaned)
-                        sections.append({
-                            "type": "page",
-                            "page_number": page_num,
-                            "content": cleaned,
-                            "tables": self._extract_tables(page),
-                        })
+                        sections.append(
+                            {
+                                "type": "page",
+                                "page_number": page_num,
+                                "content": cleaned,
+                                "tables": self._extract_tables(page),
+                            }
+                        )
 
                 # Extract metadata
                 metadata: dict[str, Any] = {
@@ -139,11 +143,7 @@ class PDFParser(BaseParser):
                     "file_name": file_path.name,
                 }
                 if pdf.metadata:
-                    metadata.update({
-                        k.lower(): v
-                        for k, v in pdf.metadata.items()
-                        if v
-                    })
+                    metadata.update({k.lower(): v for k, v in pdf.metadata.items() if v})
 
         except Exception as e:
             logger.error("PDF parsing failed", path=str(file_path), error=str(e))
@@ -170,11 +170,13 @@ class PDFParser(BaseParser):
         try:
             for table in page.extract_tables():
                 if table:
-                    tables.append({
-                        "rows": table,
-                        "row_count": len(table),
-                        "col_count": len(table[0]) if table else 0,
-                    })
+                    tables.append(
+                        {
+                            "rows": table,
+                            "row_count": len(table),
+                            "col_count": len(table[0]) if table else 0,
+                        }
+                    )
         except Exception as exc:
             # Table extraction is best-effort: a malformed table must never
             # fail the page's text extraction.
@@ -200,7 +202,7 @@ class AIBasedPDFParser(BaseParser):
             # Use unstructured's AI-based partitioning
             elements = partition_pdf(
                 filename=str(file_path),
-                strategy="hi_res",           # High resolution AI extraction
+                strategy="hi_res",  # High resolution AI extraction
                 infer_table_structure=True,  # AI table detection
                 include_page_breaks=True,
                 extract_images_in_pdf=False,
@@ -228,10 +230,12 @@ class AIBasedPDFParser(BaseParser):
                     }
                 elif current_section:
                     current_section["content"] += f"\n{elem_text}"
-                    current_section["elements"].append({
-                        "type": elem_type,
-                        "text": elem_text,
-                    })
+                    current_section["elements"].append(
+                        {
+                            "type": elem_type,
+                            "text": elem_text,
+                        }
+                    )
 
                 full_text_parts.append(elem_text)
 
@@ -241,10 +245,7 @@ class AIBasedPDFParser(BaseParser):
             full_content = "\n\n".join(full_text_parts)
 
             # Extract title from first Title element or filename
-            title = (
-                next((s["title"] for s in sections if s.get("title")), None)
-                or file_path.stem
-            )
+            title = next((s["title"] for s in sections if s.get("title")), None) or file_path.stem
 
             return ParsedDocument(
                 doc_id=self._generate_doc_id(file_path),
@@ -296,20 +297,22 @@ class HTMLParser(BaseParser):
 
             # Gather content until next heading of same or higher level
             for sibling in heading.next_siblings:
-                if hasattr(sibling, 'name') and sibling.name in ["h1", "h2", "h3", "h4"]:
+                if hasattr(sibling, "name") and sibling.name in ["h1", "h2", "h3", "h4"]:
                     break
-                if hasattr(sibling, 'get_text'):
+                if hasattr(sibling, "get_text"):
                     text = sibling.get_text(separator=" ", strip=True)
                     if text:
                         section_content_parts.append(text)
 
             if section_content_parts:
-                sections.append({
-                    "type": "section",
-                    "title": section_title,
-                    "heading_level": heading.name,
-                    "content": " ".join(section_content_parts),
-                })
+                sections.append(
+                    {
+                        "type": "section",
+                        "title": section_title,
+                        "heading_level": heading.name,
+                        "content": " ".join(section_content_parts),
+                    }
+                )
 
         # Full text extraction
         full_content = soup.get_text(separator="\n", strip=True)
@@ -417,7 +420,7 @@ class MarkdownParser(BaseParser):
 
         for line in lines:
             # Detect headings
-            heading_match = re.match(r'^(#{1,4})\s+(.+)$', line)
+            heading_match = re.match(r"^(#{1,4})\s+(.+)$", line)
             if heading_match:
                 if current_section:
                     sections.append(current_section)
@@ -436,17 +439,14 @@ class MarkdownParser(BaseParser):
             sections.append(current_section)
 
         # Extract document title
-        title = (
-            next((s["title"] for s in sections if s.get("level") == 1), None)
-            or file_path.stem
-        )
+        title = next((s["title"] for s in sections if s.get("level") == 1), None) or file_path.stem
 
         # Clean markdown syntax for plain text
-        plain_text = re.sub(r'#{1,6}\s+', '', content)
-        plain_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', plain_text)
-        plain_text = re.sub(r'\*([^*]+)\*', r'\1', plain_text)
-        plain_text = re.sub(r'`([^`]+)`', r'\1', plain_text)
-        plain_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', plain_text)
+        plain_text = re.sub(r"#{1,6}\s+", "", content)
+        plain_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", plain_text)
+        plain_text = re.sub(r"\*([^*]+)\*", r"\1", plain_text)
+        plain_text = re.sub(r"`([^`]+)`", r"\1", plain_text)
+        plain_text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", plain_text)
 
         return ParsedDocument(
             doc_id=self._generate_doc_id(file_path),
@@ -497,9 +497,7 @@ class DocumentParserFactory:
 
     @classmethod
     def get_doc_type(cls, file_path: Path) -> DocumentType:
-        return cls._EXTENSION_MAP.get(
-            file_path.suffix.lower(), DocumentType.UNKNOWN
-        )
+        return cls._EXTENSION_MAP.get(file_path.suffix.lower(), DocumentType.UNKNOWN)
 
     @classmethod
     def get_parser(
@@ -512,9 +510,7 @@ class DocumentParserFactory:
         if doc_type == DocumentType.UNKNOWN:
             raise ValueError(f"Unsupported file type: {file_path.suffix}")
 
-        parsers_for_type: dict[ParseStrategy, type[BaseParser]] = cls._PARSERS.get(
-            doc_type, {}
-        )
+        parsers_for_type: dict[ParseStrategy, type[BaseParser]] = cls._PARSERS.get(doc_type, {})
         parser_class = parsers_for_type.get(strategy) or parsers_for_type.get(
             ParseStrategy.RULE_BASED
         )

@@ -49,8 +49,8 @@ class TestRetryabilityContract:
     @pytest.mark.parametrize(
         "exc_class,expected_transient",
         [
-            (LLMProviderError, True),      # provider 5xx: retry helps
-            (IndexNotReadyError, True),    # warming: retry after backoff
+            (LLMProviderError, True),  # provider 5xx: retry helps
+            (IndexNotReadyError, True),  # warming: retry after backoff
             (AuthenticationError, False),  # bad key: retry is pointless
         ],
     )

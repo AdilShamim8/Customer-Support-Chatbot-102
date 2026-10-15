@@ -28,7 +28,8 @@ class ChatbotUser(HttpUser):
     Simulates realistic chatbot usage.
     Run with: locust -f tests/load/locustfile.py --host http://localhost:8000
     """
-    wait_time = between(1, 5)   # 1-5 seconds between requests
+
+    wait_time = between(1, 5)  # 1-5 seconds between requests
 
     def on_start(self):
         """Start a new conversation session."""
@@ -61,7 +62,7 @@ class ChatbotUser(HttpUser):
             name="/api/v1/chat/ [conversational]",
         )
 
-    @task(5)   # 5% - streaming
+    @task(5)  # 5% - streaming
     def streaming_request(self):
         self.client.post(
             "/api/v1/chat/",
@@ -73,11 +74,11 @@ class ChatbotUser(HttpUser):
             name="/api/v1/chat/ [stream]",
         )
 
-    @task(3)   # 3% - health checks
+    @task(3)  # 3% - health checks
     def health_check(self):
         self.client.get("/health", name="/health")
 
-    @task(2)   # 2% - stats
+    @task(2)  # 2% - stats
     def check_stats(self):
         self.client.get(
             "/api/v1/admin/stats",

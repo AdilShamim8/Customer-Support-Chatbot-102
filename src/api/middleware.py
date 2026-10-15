@@ -83,8 +83,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Clean old entries
         if client_ip in self._request_counts:
             self._request_counts[client_ip] = [
-                t for t in self._request_counts[client_ip]
-                if t > window_start
+                t for t in self._request_counts[client_ip] if t > window_start
             ]
         else:
             self._request_counts[client_ip] = []

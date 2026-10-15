@@ -29,7 +29,7 @@ class TestFixedSizeChunker:
         chunks = chunker.chunk(doc)
         assert len(chunks) > 1
         for chunk in chunks:
-            assert len(chunk.content) <= 150   # Allow some variance
+            assert len(chunk.content) <= 150  # Allow some variance
 
     def test_chunk_ids_are_unique(self):
         doc = make_doc("word " * 500)

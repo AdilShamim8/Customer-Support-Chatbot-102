@@ -11,12 +11,7 @@ from enum import Enum
 
 import numpy as np
 import structlog
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from configs.settings import settings
 
@@ -32,6 +27,7 @@ class EmbeddingProvider(str, Enum):
 @dataclass
 class EmbeddingResult:
     """Result of an embedding operation."""
+
     texts: list[str]
     embeddings: list[list[float]]
     model: str
@@ -106,7 +102,7 @@ class BaseEmbeddingModel(ABC):
         all_embeddings = []
 
         for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
+            batch = texts[i : i + self.batch_size]
             logger.debug(
                 "Embedding batch",
                 batch_num=i // self.batch_size + 1,
@@ -153,9 +149,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
     )
     # tenacity's decorator typing widens the signature; the runtime
     # contract is unchanged.
-    def _embed_batch(  # type: ignore[override]
-        self, texts: list[str]
-    ) -> list[list[float]]:
+    def _embed_batch(self, texts: list[str]) -> list[list[float]]:  # type: ignore[override]
         """Call OpenAI Embeddings API with retry logic."""
         # Clean texts
         cleaned = [t.replace("\n", " ").strip() for t in texts]
@@ -194,6 +188,7 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
         super().__init__(model_name, dimension, **kwargs)
 
         import torch
+
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -208,7 +203,7 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         embeddings = self.model.encode(
             texts,
-            normalize_embeddings=True,   # L2 normalization
+            normalize_embeddings=True,  # L2 normalization
             show_progress_bar=False,
             convert_to_numpy=True,
         )

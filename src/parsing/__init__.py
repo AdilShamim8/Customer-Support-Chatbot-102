@@ -1,9 +1,6 @@
 """Document parsing and chunking modules."""
-from src.parsing.chunking import (
-    ChunkerFactory,
-    ChunkingStrategy,
-    DocumentChunk,
-)
+
+from src.parsing.chunking import ChunkerFactory, ChunkingStrategy, DocumentChunk
 from src.parsing.document_parser import (
     DocumentParserFactory,
     DocumentType,

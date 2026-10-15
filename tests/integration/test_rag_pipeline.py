@@ -59,6 +59,7 @@ def rag_pipeline(mock_retrieval_result, mock_llm_response):
 
     async def async_complete(*args, **kwargs):
         return mock_llm_response
+
     mock_llm.acomplete = async_complete
 
     conversation_manager = ConversationManager(use_redis=False)
@@ -75,9 +76,7 @@ class TestRAGPipelineIntegration:
 
     @pytest.mark.asyncio
     async def test_basic_query(self, rag_pipeline):
-        response = await rag_pipeline.aquery(
-            user_query="How do I reset my password?"
-        )
+        response = await rag_pipeline.aquery(user_query="How do I reset my password?")
         assert response.answer
         assert isinstance(response.sources, list)
         assert response.total_latency_ms > 0
@@ -121,9 +120,7 @@ class TestRAGPipelineIntegration:
 
     @pytest.mark.asyncio
     async def test_response_has_sources(self, rag_pipeline):
-        response = await rag_pipeline.aquery(
-            user_query="What is the return policy?"
-        )
+        response = await rag_pipeline.aquery(user_query="What is the return policy?")
         assert len(response.sources) > 0
         assert response.sources[0]["title"] == "Account Guide"
 

@@ -8,11 +8,7 @@ from pathlib import Path
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 
-from src.api.schemas import (
-    EvaluationRequest,
-    EvaluationResponse,
-    StatsResponse,
-)
+from src.api.schemas import EvaluationRequest, EvaluationResponse, StatsResponse
 from src.evaluation.evaluator import EvaluationSample, RAGEvaluator
 from src.parsing.chunking import ChunkerFactory, ChunkingStrategy
 from src.parsing.document_parser import DocumentParserFactory, ParseStrategy
@@ -47,14 +43,11 @@ async def upload_document(
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: {file_ext}. "
-                   f"Allowed: {ALLOWED_EXTENSIONS}",
+            detail=f"Unsupported file type: {file_ext}. " f"Allowed: {ALLOWED_EXTENSIONS}",
         )
 
     # Save uploaded file to temp location
-    with tempfile.NamedTemporaryFile(
-        suffix=file_ext, delete=False
-    ) as tmp_file:
+    with tempfile.NamedTemporaryFile(suffix=file_ext, delete=False) as tmp_file:
         content = await file.read()
         tmp_file.write(content)
         tmp_path = Path(tmp_file.name)
@@ -72,9 +65,7 @@ async def upload_document(
             doc_id = doc.doc_id
 
             # Chunk document
-            chunker = ChunkerFactory.get_chunker(
-                strategy=ChunkingStrategy(chunk_strategy)
-            )
+            chunker = ChunkerFactory.get_chunker(strategy=ChunkingStrategy(chunk_strategy))
             chunks = chunker.chunk(doc)
 
             # Index chunks

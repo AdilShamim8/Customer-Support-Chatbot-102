@@ -42,9 +42,7 @@ class CohereReranker(BaseReranker):
         import cohere
 
         self.model = model
-        self.client = cohere.Client(
-            api_key=api_key or settings.cohere_api_key
-        )
+        self.client = cohere.Client(api_key=api_key or settings.cohere_api_key)
         logger.info("Cohere reranker initialized", model=model)
 
     @retry(
@@ -75,19 +73,21 @@ class CohereReranker(BaseReranker):
         reranked = []
         for rank, item in enumerate(response.results):
             original = results[item.index]
-            reranked.append(SearchResult(
-                chunk_id=original.chunk_id,
-                doc_id=original.doc_id,
-                content=original.content,
-                score=item.relevance_score,
-                metadata={
-                    **original.metadata,
-                    "rerank_score": item.relevance_score,
-                    "original_rank": original.rank,
-                    "original_score": original.score,
-                },
-                rank=rank,
-            ))
+            reranked.append(
+                SearchResult(
+                    chunk_id=original.chunk_id,
+                    doc_id=original.doc_id,
+                    content=original.content,
+                    score=item.relevance_score,
+                    metadata={
+                        **original.metadata,
+                        "rerank_score": item.relevance_score,
+                        "original_rank": original.rank,
+                        "original_score": original.score,
+                    },
+                    rank=rank,
+                )
+            )
 
         logger.debug(
             "Cohere reranking complete",
@@ -142,18 +142,20 @@ class CrossEncoderReranker(BaseReranker):
 
         reranked = []
         for rank, (result, score) in enumerate(scored[:top_k]):
-            reranked.append(SearchResult(
-                chunk_id=result.chunk_id,
-                doc_id=result.doc_id,
-                content=result.content,
-                score=float(score),
-                metadata={
-                    **result.metadata,
-                    "rerank_score": float(score),
-                    "original_rank": result.rank,
-                },
-                rank=rank,
-            ))
+            reranked.append(
+                SearchResult(
+                    chunk_id=result.chunk_id,
+                    doc_id=result.doc_id,
+                    content=result.content,
+                    score=float(score),
+                    metadata={
+                        **result.metadata,
+                        "rerank_score": float(score),
+                        "original_rank": result.rank,
+                    },
+                    rank=rank,
+                )
+            )
 
         return reranked
 
@@ -186,10 +188,7 @@ class FlashRankReranker(BaseReranker):
         if not results:
             return []
 
-        passages = [
-            {"id": r.chunk_id, "text": r.content, "meta": r.metadata}
-            for r in results
-        ]
+        passages = [{"id": r.chunk_id, "text": r.content, "meta": r.metadata} for r in results]
 
         rerank_request = self.RerankRequest(query=query, passages=passages)
         reranked_passages = self.ranker.rerank(rerank_request)
@@ -201,18 +200,20 @@ class FlashRankReranker(BaseReranker):
         for rank, passage in enumerate(reranked_passages[:top_k]):
             original = id_to_result.get(passage["id"])
             if original:
-                reranked.append(SearchResult(
-                    chunk_id=original.chunk_id,
-                    doc_id=original.doc_id,
-                    content=original.content,
-                    score=passage.get("score", 0.0),
-                    metadata={
-                        **original.metadata,
-                        "rerank_score": passage.get("score", 0.0),
-                        "original_rank": original.rank,
-                    },
-                    rank=rank,
-                ))
+                reranked.append(
+                    SearchResult(
+                        chunk_id=original.chunk_id,
+                        doc_id=original.doc_id,
+                        content=original.content,
+                        score=passage.get("score", 0.0),
+                        metadata={
+                            **original.metadata,
+                            "rerank_score": passage.get("score", 0.0),
+                            "original_rank": original.rank,
+                        },
+                        rank=rank,
+                    )
+                )
 
         return reranked
 

@@ -23,10 +23,11 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class SearchResult:
     """A single vector search result with score and metadata."""
+
     chunk_id: str
     doc_id: str
     content: str
-    score: float                          # Similarity score (0-1)
+    score: float  # Similarity score (0-1)
     metadata: dict[str, Any] = field(default_factory=dict)
     rank: int = 0
 
@@ -44,6 +45,7 @@ class SearchResult:
 @dataclass
 class SearchQuery:
     """A search query with optional filters."""
+
     text: str
     top_k: int = settings.top_k_retrieval
     filters: dict[str, Any] = field(default_factory=dict)
@@ -128,7 +130,7 @@ class ChromaVectorStore(BaseVectorStore):
         # Get or create collection
         self.collection = self.client.get_or_create_collection(
             name=collection_name,
-            metadata={"hnsw:space": "cosine"},    # Cosine similarity
+            metadata={"hnsw:space": "cosine"},  # Cosine similarity
         )
 
         logger.info(
@@ -147,7 +149,7 @@ class ChromaVectorStore(BaseVectorStore):
         all_ids = []
 
         for batch_start in range(0, len(chunks), BATCH_SIZE):
-            batch = chunks[batch_start:batch_start + BATCH_SIZE]
+            batch = chunks[batch_start : batch_start + BATCH_SIZE]
 
             # Embed batch
             embeddings = self._embed_chunks(batch)
@@ -203,26 +205,31 @@ class ChromaVectorStore(BaseVectorStore):
 
         search_results = []
 
-        for i, (chunk_id, document, metadata, distance) in enumerate(zip(
-            results["ids"][0],
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0], strict=False,
-        )):
+        for i, (chunk_id, document, metadata, distance) in enumerate(
+            zip(
+                results["ids"][0],
+                results["documents"][0],
+                results["metadatas"][0],
+                results["distances"][0],
+                strict=False,
+            )
+        ):
             # Convert cosine distance to similarity (distance range: 0-2)
             similarity = 1 - (distance / 2)
 
             if similarity < query.min_score:
                 continue
 
-            search_results.append(SearchResult(
-                chunk_id=chunk_id,
-                doc_id=metadata.get("doc_id", ""),
-                content=document,
-                score=similarity,
-                metadata=metadata,
-                rank=i,
-            ))
+            search_results.append(
+                SearchResult(
+                    chunk_id=chunk_id,
+                    doc_id=metadata.get("doc_id", ""),
+                    content=document,
+                    score=similarity,
+                    metadata=metadata,
+                    rank=i,
+                )
+            )
 
         return search_results
 
@@ -304,11 +311,7 @@ class ChromaVectorStore(BaseVectorStore):
             return {key: {"$eq": value}}
 
         # Multiple filters with AND
-        return {
-            "$and": [
-                {k: {"$eq": v}} for k, v in filters.items()
-            ]
-        }
+        return {"$and": [{k: {"$eq": v}} for k, v in filters.items()]}
 
 
 class FAISSVectorStore(BaseVectorStore):
@@ -321,7 +324,7 @@ class FAISSVectorStore(BaseVectorStore):
     def __init__(
         self,
         dimension: int = settings.embedding_dimension,
-        index_type: str = "flat",           # "flat" or "ivf"
+        index_type: str = "flat",  # "flat" or "ivf"
         persist_path: str | None = None,
         embedding_model: BaseEmbeddingModel | None = None,
     ):
@@ -334,8 +337,8 @@ class FAISSVectorStore(BaseVectorStore):
 
         # Chunk metadata storage (FAISS only stores vectors)
         self._chunks: dict[str, DocumentChunk] = {}
-        self._id_to_index: dict[str, int] = {}    # chunk_id -> faiss index
-        self._index_to_id: dict[int, str] = {}    # faiss index -> chunk_id
+        self._id_to_index: dict[str, int] = {}  # chunk_id -> faiss index
+        self._index_to_id: dict[int, str] = {}  # faiss index -> chunk_id
         self._next_index = 0
 
         # Initialize FAISS index
@@ -355,7 +358,9 @@ class FAISSVectorStore(BaseVectorStore):
         """Create appropriate FAISS index."""
         if index_type == "flat":
             # Exact search - most accurate, slower for large datasets
-            index = self.faiss.IndexFlatIP(dimension)  # Inner product (cosine with normalized vectors)
+            index = self.faiss.IndexFlatIP(
+                dimension
+            )  # Inner product (cosine with normalized vectors)
         elif index_type == "ivf":
             # Approximate search - faster, slight accuracy tradeoff
             nlist = 100  # Number of clusters
@@ -384,7 +389,7 @@ class FAISSVectorStore(BaseVectorStore):
         self.faiss.normalize_L2(vectors)
 
         # Train IVF index if needed
-        if hasattr(self.index, 'is_trained') and not self.index.is_trained:
+        if hasattr(self.index, "is_trained") and not self.index.is_trained:
             logger.info("Training FAISS IVF index...")
             self.index.train(vectors)
 
@@ -423,7 +428,7 @@ class FAISSVectorStore(BaseVectorStore):
 
         results = []
         for rank, (score, faiss_idx) in enumerate(zip(scores[0], indices[0], strict=False)):
-            if faiss_idx == -1:    # FAISS returns -1 for missing
+            if faiss_idx == -1:  # FAISS returns -1 for missing
                 continue
 
             chunk_id = self._index_to_id.get(faiss_idx)
@@ -440,14 +445,16 @@ class FAISSVectorStore(BaseVectorStore):
             if similarity < query.min_score:
                 continue
 
-            results.append(SearchResult(
-                chunk_id=chunk_id,
-                doc_id=chunk.doc_id,
-                content=chunk.content,
-                score=similarity,
-                metadata=chunk.metadata,
-                rank=rank,
-            ))
+            results.append(
+                SearchResult(
+                    chunk_id=chunk_id,
+                    doc_id=chunk.doc_id,
+                    content=chunk.content,
+                    score=similarity,
+                    metadata=chunk.metadata,
+                    rank=rank,
+                )
+            )
 
         return results
 

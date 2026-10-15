@@ -48,7 +48,7 @@ class TestRoleHierarchy:
         [
             (UserRole.VIEWER, UserRole.VIEWER, True),
             (UserRole.VIEWER, UserRole.USER, False),
-            (UserRole.USER, UserRole.VIEWER, True),   # hierarchy grants lesser
+            (UserRole.USER, UserRole.VIEWER, True),  # hierarchy grants lesser
             (UserRole.USER, UserRole.ADMIN, False),
             (UserRole.ADMIN, UserRole.ADMIN, True),
             (UserRole.SYSTEM, UserRole.ADMIN, True),

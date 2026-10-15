@@ -39,6 +39,7 @@ logger = structlog.get_logger(__name__)
 
 # ─── LoRA Configuration ───────────────────────────────────────────────────────
 
+
 def get_lora_config(
     r: int = 16,
     lora_alpha: int = 32,
@@ -59,11 +60,13 @@ def get_lora_config(
 
     # Default targets for most transformer models
     default_targets = [
-        "q_proj", "v_proj",    # Attention query and value projections
-        "k_proj", "o_proj",    # Key and output projections
-        "gate_proj",           # MLP gate (LLaMA/Mistral)
-        "up_proj",             # MLP up projection
-        "down_proj",           # MLP down projection
+        "q_proj",
+        "v_proj",  # Attention query and value projections
+        "k_proj",
+        "o_proj",  # Key and output projections
+        "gate_proj",  # MLP gate (LLaMA/Mistral)
+        "up_proj",  # MLP up projection
+        "down_proj",  # MLP down projection
     ]
 
     return LoraConfig(
@@ -96,6 +99,7 @@ def get_qlora_config(r: int = 16):
 
 
 # ─── Dataset Loading ──────────────────────────────────────────────────────────
+
 
 def load_training_data(dataset_path: str) -> "datasets.Dataset":
     """Load RAFT-format JSONL training data."""
@@ -137,6 +141,7 @@ def format_prompt(messages: list[dict], tokenizer) -> str:
 
 
 # ─── Training ─────────────────────────────────────────────────────────────────
+
 
 def train_lora(
     base_model_name: str,
@@ -237,9 +242,7 @@ def train_lora(
 
     logger.info(
         "PEFT model ready",
-        trainable_params=sum(
-            p.numel() for p in model.parameters() if p.requires_grad
-        ),
+        trainable_params=sum(p.numel() for p in model.parameters() if p.requires_grad),
         total_params=sum(p.numel() for p in model.parameters()),
     )
 
@@ -319,6 +322,7 @@ def train_lora(
 
 # ─── Inference with LoRA Adapter ─────────────────────────────────────────────
 
+
 def load_lora_model(adapter_path: str, base_model_name: str | None = None):
     """
     Load a fine-tuned LoRA adapter for inference.
@@ -384,6 +388,7 @@ def merge_and_export(
 
 
 # ─── Main CLI ─────────────────────────────────────────────────────────────────
+
 
 def main():
     setup_logging()
@@ -451,9 +456,7 @@ def main():
         from src.indexing.vector_store import SearchQuery
 
         index = HybridIndex()
-        search_results = index.vector_store.search(
-            SearchQuery(text="customer support", top_k=100)
-        )
+        search_results = index.vector_store.search(SearchQuery(text="customer support", top_k=100))
 
         if search_results:
             dataset = generator.generate_dataset(

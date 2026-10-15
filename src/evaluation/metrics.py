@@ -30,14 +30,16 @@ logger = structlog.get_logger(__name__)
 
 # ─── Metric Result Structures ─────────────────────────────────────────────────
 
+
 @dataclass
 class MetricScore:
     """A single metric evaluation result."""
+
     metric_name: str
-    score: float                        # 0.0 to 1.0
+    score: float  # 0.0 to 1.0
     reasoning: str = ""
     details: dict = field(default_factory=dict)
-    passed: bool = True                 # score >= threshold
+    passed: bool = True  # score >= threshold
 
     def to_dict(self) -> dict:
         return {
@@ -55,9 +57,10 @@ class EvaluationSample:
     A single RAG evaluation sample.
     All fields needed to evaluate one Q&A interaction.
     """
+
     question: str
-    answer: str                          # Model's generated answer
-    contexts: list[str]                  # Retrieved context chunks
+    answer: str  # Model's generated answer
+    contexts: list[str]  # Retrieved context chunks
     ground_truth: str | None = None  # Reference answer (for correctness)
     question_id: str | None = None
     metadata: dict = field(default_factory=dict)
@@ -66,6 +69,7 @@ class EvaluationSample:
 @dataclass
 class EvaluationResult:
     """Complete evaluation result for one sample."""
+
     sample: EvaluationSample
     scores: dict[str, MetricScore] = field(default_factory=dict)
     overall_score: float = 0.0
@@ -108,14 +112,12 @@ class EvaluationResult:
             "answer": self.sample.answer,
             "overall_score": round(self.overall_score, 4),
             "passed": self.passed,
-            "scores": {
-                name: score.to_dict()
-                for name, score in self.scores.items()
-            },
+            "scores": {name: score.to_dict() for name, score in self.scores.items()},
         }
 
 
 # ─── LLM-Based Metric Evaluators ─────────────────────────────────────────────
+
 
 class LLMJudge:
     """
@@ -248,7 +250,7 @@ Respond with JSON:
             result = json.loads(response.content)
 
             score = float(result.get("score", 0.0))
-            score = max(0.0, min(1.0, score))   # Clamp to [0, 1]
+            score = max(0.0, min(1.0, score))  # Clamp to [0, 1]
 
             return MetricScore(
                 metric_name=metric_name,
@@ -290,7 +292,7 @@ Respond with JSON:
             )
 
         scores = []
-        for ctx in contexts[:5]:   # Evaluate top 5 contexts
+        for ctx in contexts[:5]:  # Evaluate top 5 contexts
             prompt = self.CONTEXT_RELEVANCE_PROMPT.format(
                 question=question,
                 context=ctx[:1500],
@@ -373,6 +375,7 @@ Respond with JSON:
 
 # ─── Statistical Metrics ──────────────────────────────────────────────────────
 
+
 class StatisticalMetrics:
     """
     Non-LLM statistical metrics.
@@ -390,6 +393,7 @@ class StatisticalMetrics:
         """
         try:
             from rouge_score import rouge_scorer
+
             scorer = rouge_scorer.RougeScorer(
                 ["rouge1", "rouge2", "rougeL"],
                 use_stemmer=True,
@@ -438,19 +442,57 @@ class StatisticalMetrics:
                 passed=False,
             )
 
-        answer_tokens = set(re.findall(r'\b\w+\b', answer.lower()))
+        answer_tokens = set(re.findall(r"\b\w+\b", answer.lower()))
         context_text = " ".join(contexts)
-        context_tokens = set(re.findall(r'\b\w+\b', context_text.lower()))
+        context_tokens = set(re.findall(r"\b\w+\b", context_text.lower()))
 
         # Remove stop words for meaningful overlap
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were",
-            "be", "been", "being", "have", "has", "had",
-            "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "shall", "can", "to",
-            "of", "in", "on", "at", "by", "for", "with",
-            "from", "up", "about", "into", "through", "and",
-            "or", "but", "not", "that", "this", "it", "i",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "shall",
+            "can",
+            "to",
+            "of",
+            "in",
+            "on",
+            "at",
+            "by",
+            "for",
+            "with",
+            "from",
+            "up",
+            "about",
+            "into",
+            "through",
+            "and",
+            "or",
+            "but",
+            "not",
+            "that",
+            "this",
+            "it",
+            "i",
         }
 
         answer_meaningful = answer_tokens - stop_words
@@ -529,20 +571,17 @@ class StatisticalMetrics:
         # Check if answer mentions source titles
         answer_lower = answer.lower()
         cited = [
-            title for title in source_titles
+            title
+            for title in source_titles
             if title.lower() in answer_lower
-            or any(
-                word in answer_lower
-                for word in title.lower().split()
-                if len(word) > 4
-            )
+            or any(word in answer_lower for word in title.lower().split() if len(word) > 4)
         ]
 
         if not cited:
             # Answer may be correct but not explicitly citing
             return MetricScore(
                 metric_name="citation_precision",
-                score=0.8,    # Penalize slightly but not fully
+                score=0.8,  # Penalize slightly but not fully
                 reasoning="No explicit citations in answer",
                 details={"available_sources": source_titles},
                 passed=True,

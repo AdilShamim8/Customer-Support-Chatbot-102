@@ -59,9 +59,7 @@ class TestPerRequestConfigContract:
     contract violation). These tests pin the wiring.
     """
 
-    async def test_filters_and_strategy_reach_the_pipeline(
-        self, client, stub_pipeline
-    ):
+    async def test_filters_and_strategy_reach_the_pipeline(self, client, stub_pipeline):
         r = await client.post(
             "/api/v1/chat",
             json={
@@ -86,8 +84,7 @@ class TestPerRequestConfigContract:
             == stub_pipeline.config.retrieval_config.top_k_retrieval
         )
         assert (
-            override.prompt_config.company_name
-            == stub_pipeline.config.prompt_config.company_name
+            override.prompt_config.company_name == stub_pipeline.config.prompt_config.company_name
         )
 
     async def test_defaults_reach_the_pipeline_unchanged(self, client, stub_pipeline):

@@ -18,16 +18,14 @@ from typing import Any
 
 import structlog
 
-from src.generation.llm_client import (
-    BaseLLMClient,
-    LLMClientFactory,
-)
+from src.generation.llm_client import BaseLLMClient, LLMClientFactory
 from src.indexing.vector_store import SearchResult
 
 logger = structlog.get_logger(__name__)
 
 
 # ─── RAFT Data Structures ─────────────────────────────────────────────────────
+
 
 @dataclass
 class RAFTExample:
@@ -42,8 +40,9 @@ class RAFTExample:
     - oracle_doc_ids: IDs of the truly relevant documents
     - distractor_doc_ids: IDs of the misleading documents
     """
+
     question: str
-    context: list[dict]          # List of {doc_id, content, is_oracle}
+    context: list[dict]  # List of {doc_id, content, is_oracle}
     chain_of_thought: str
     answer: str
     oracle_doc_ids: list[str]
@@ -62,7 +61,7 @@ class RAFTExample:
                 "oracle_docs": self.oracle_doc_ids,
                 "distractor_docs": self.distractor_doc_ids,
                 **self.metadata,
-            }
+            },
         }
 
     def to_messages(self) -> dict[str, Any]:
@@ -82,10 +81,7 @@ class RAFTExample:
                 },
                 {
                     "role": "assistant",
-                    "content": (
-                        f"{self.chain_of_thought}\n\n"
-                        f"Final Answer: {self.answer}"
-                    ),
+                    "content": (f"{self.chain_of_thought}\n\n" f"Final Answer: {self.answer}"),
                 },
             ]
         }
@@ -93,9 +89,7 @@ class RAFTExample:
     def _format_context(self) -> str:
         parts = []
         for i, doc in enumerate(self.context, 1):
-            parts.append(
-                f"Document [{i}] (ID: {doc['doc_id']}):\n{doc['content']}"
-            )
+            parts.append(f"Document [{i}] (ID: {doc['doc_id']}):\n{doc['content']}")
         return "\n\n".join(parts)
 
     def _build_instruction(self, context_text: str) -> str:
@@ -113,10 +107,9 @@ class RAFTExample:
 @dataclass
 class RAFTDataset:
     """Collection of RAFT training examples."""
+
     examples: list[RAFTExample] = field(default_factory=list)
-    split_ratios: dict = field(default_factory=lambda: {
-        "train": 0.8, "val": 0.1, "test": 0.1
-    })
+    split_ratios: dict = field(default_factory=lambda: {"train": 0.8, "val": 0.1, "test": 0.1})
 
     def add(self, example: RAFTExample) -> None:
         self.examples.append(example)
@@ -155,8 +148,8 @@ class RAFTDataset:
 
         splits = {
             "train": examples[:n_train],
-            "val": examples[n_train:n_train + n_val],
-            "test": examples[n_train + n_val:],
+            "val": examples[n_train : n_train + n_val],
+            "test": examples[n_train + n_val :],
         }
 
         saved_paths = {}
@@ -186,16 +179,19 @@ class RAFTDataset:
             "total_examples": len(self.examples),
             "avg_oracle_docs": (
                 sum(len(e.oracle_doc_ids) for e in self.examples) / len(self.examples)
-                if self.examples else 0
+                if self.examples
+                else 0
             ),
             "avg_distractor_docs": (
                 sum(len(e.distractor_doc_ids) for e in self.examples) / len(self.examples)
-                if self.examples else 0
+                if self.examples
+                else 0
             ),
         }
 
 
 # ─── RAFT Data Generator ──────────────────────────────────────────────────────
+
 
 class RAFTDataGenerator:
     """
@@ -298,9 +294,7 @@ Answer (with citations):"""
                     # Decide whether to include oracle (RAFT trick).
                     # random is fine here: this selects TRAINING data, not
                     # anything cryptographic.
-                    include_oracle = (
-                        random.random() < self.oracle_probability  # noqa: S311
-                    )
+                    include_oracle = random.random() < self.oracle_probability  # noqa: S311
 
                     # Sample distractors (chunks from other documents)
                     distractors = self._sample_distractors(
@@ -364,12 +358,12 @@ Answer (with citations):"""
         """Generate realistic customer questions from a document chunk."""
         prompt = self.QUESTION_GENERATION_PROMPT.format(
             num_questions=self.questions_per_chunk,
-            content=chunk.content[:2000],   # Limit context for question gen
+            content=chunk.content[:2000],  # Limit context for question gen
         )
 
         response = self.llm.chat(
             user_message=prompt,
-            temperature=0.8,    # Higher temp for diverse questions
+            temperature=0.8,  # Higher temp for diverse questions
             max_tokens=500,
             response_format={"type": "json_object"},
         )
@@ -382,10 +376,7 @@ Answer (with citations):"""
                 questions = json.loads(content)
             else:
                 parsed = json.loads(content)
-                questions = parsed.get(
-                    "questions",
-                    list(parsed.values())[0] if parsed else []
-                )
+                questions = parsed.get("questions", list(parsed.values())[0] if parsed else [])
 
             return [q for q in questions if isinstance(q, str) and q.strip()]
 
@@ -401,8 +392,9 @@ Answer (with citations):"""
     def _extract_questions_from_text(self, text: str) -> list[str]:
         """Fallback question extraction from unstructured text."""
         import re
+
         questions = re.findall(r'["\']([^"\']+\?)["\']', text)
-        return questions[:self.questions_per_chunk]
+        return questions[: self.questions_per_chunk]
 
     def _sample_distractors(
         self,
@@ -412,9 +404,9 @@ Answer (with citations):"""
     ) -> list[SearchResult]:
         """Sample n distractor chunks from different documents."""
         candidates = [
-            c for c in all_chunks
-            if c.doc_id != oracle_chunk.doc_id
-            and c.chunk_id != oracle_chunk.chunk_id
+            c
+            for c in all_chunks
+            if c.doc_id != oracle_chunk.doc_id and c.chunk_id != oracle_chunk.chunk_id
         ]
 
         if len(candidates) <= n:
@@ -434,19 +426,23 @@ Answer (with citations):"""
         distractor_ids = []
 
         if include_oracle:
-            docs.append({
-                "doc_id": oracle_chunk.chunk_id,
-                "content": oracle_chunk.content,
-                "is_oracle": True,
-            })
+            docs.append(
+                {
+                    "doc_id": oracle_chunk.chunk_id,
+                    "content": oracle_chunk.content,
+                    "is_oracle": True,
+                }
+            )
             oracle_ids.append(oracle_chunk.chunk_id)
 
         for dist in distractors:
-            docs.append({
-                "doc_id": dist.chunk_id,
-                "content": dist.content,
-                "is_oracle": False,
-            })
+            docs.append(
+                {
+                    "doc_id": dist.chunk_id,
+                    "content": dist.content,
+                    "is_oracle": False,
+                }
+            )
             distractor_ids.append(dist.chunk_id)
 
         # Shuffle to prevent position bias
@@ -467,10 +463,12 @@ Answer (with citations):"""
             (final_answer, chain_of_thought)
         """
         # Format context for the prompt
-        context_text = "\n\n".join([
-            f"Document [{i+1}] (ID: {doc['doc_id']}):\n{doc['content']}"
-            for i, doc in enumerate(context_docs)
-        ])
+        context_text = "\n\n".join(
+            [
+                f"Document [{i+1}] (ID: {doc['doc_id']}):\n{doc['content']}"
+                for i, doc in enumerate(context_docs)
+            ]
+        )
 
         prompt = self.COT_ANSWER_PROMPT.format(
             context=context_text,
@@ -479,7 +477,7 @@ Answer (with citations):"""
 
         response = self.llm.chat(
             user_message=prompt,
-            temperature=0.0,    # Deterministic for faithfulness
+            temperature=0.0,  # Deterministic for faithfulness
             max_tokens=800,
         )
 

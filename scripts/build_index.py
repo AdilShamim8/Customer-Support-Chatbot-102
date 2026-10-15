@@ -66,8 +66,7 @@ def build(input_path: Path) -> int:
         if built % 500 == 0:
             print(f"  embedded {built}/{len(chunks)}")
 
-    print(f"Build complete: {built} chunks indexed "
-          f"({len(chunks) - built} skipped as empty)")
+    print(f"Build complete: {built} chunks indexed " f"({len(chunks) - built} skipped as empty)")
     return 0
 
 

@@ -29,19 +29,19 @@ def setup_tracing(
     Initialize OpenTelemetry tracing.
     Exports to OTLP endpoint (Jaeger, Tempo, etc.)
     """
-    resource = Resource.create({
-        "service.name": service_name,
-        "service.version": "1.0.0",
-        "deployment.environment": environment,
-    })
+    resource = Resource.create(
+        {
+            "service.name": service_name,
+            "service.version": "1.0.0",
+            "deployment.environment": environment,
+        }
+    )
 
     provider = TracerProvider(resource=resource)
 
     # Export to OTLP (works with Jaeger, Grafana Tempo, etc.)
     otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
-    provider.add_span_processor(
-        BatchSpanProcessor(otlp_exporter)
-    )
+    provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
 
     trace.set_tracer_provider(provider)
 
@@ -68,10 +68,9 @@ def trace_retrieval(func):
             span.set_attribute("rag.query", str(query)[:200])
             result = await func(*args, **kwargs)
             if hasattr(result, "chunks"):
-                span.set_attribute(
-                    "rag.chunks_retrieved", len(result.chunks)
-                )
+                span.set_attribute("rag.chunks_retrieved", len(result.chunks))
             return result
+
     return wrapper
 
 
@@ -84,11 +83,8 @@ def trace_generation(func):
         with tracer.start_as_current_span("rag.generation") as span:
             result = await func(*args, **kwargs)
             if hasattr(result, "total_tokens"):
-                span.set_attribute(
-                    "llm.total_tokens", result.total_tokens
-                )
-                span.set_attribute(
-                    "llm.cost_usd", result.cost_usd
-                )
+                span.set_attribute("llm.total_tokens", result.total_tokens)
+                span.set_attribute("llm.cost_usd", result.cost_usd)
             return result
+
     return wrapper

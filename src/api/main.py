@@ -34,6 +34,7 @@ logger = structlog.get_logger(__name__)
 
 # ─── Application Lifespan ──────────────────────────────────────────────────────
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
@@ -89,7 +90,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             ),
             temperature=0.1,
             max_tokens=settings.max_response_tokens,
-            check_hallucination=False,     # Enable in production
+            check_hallucination=False,  # Enable in production
             enable_citations=True,
         )
 
@@ -110,7 +111,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             startup_time_seconds=round(startup_time, 2),
         )
 
-        yield   # Application runs here
+        yield  # Application runs here
 
     except Exception as e:
         logger.error(
@@ -137,6 +138,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 # ─── Application Factory ──────────────────────────────────────────────────────
+
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
@@ -203,6 +205,6 @@ if __name__ == "__main__":
         host="0.0.0.0",  # noqa: S104
         port=8000,
         reload=settings.is_development,
-        log_config=None,    # Use our structlog config
+        log_config=None,  # Use our structlog config
         workers=1 if settings.is_development else 4,
     )

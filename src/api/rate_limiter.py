@@ -33,6 +33,7 @@ class RedisRateLimiter:
             import redis
 
             from configs.settings import settings
+
             self._redis = redis.from_url(
                 settings.redis_url,
                 decode_responses=True,
@@ -97,17 +98,15 @@ class RedisRateLimiter:
                     detail={
                         "error": "rate_limit_exceeded",
                         "message": f"Too many requests. "
-                                   f"Limit: {self.requests_per_window} "
-                                   f"per {self.window_seconds}s",
+                        f"Limit: {self.requests_per_window} "
+                        f"per {self.window_seconds}s",
                         "retry_after": self.window_seconds,
                     },
                     headers={
                         "Retry-After": str(self.window_seconds),
                         "X-RateLimit-Limit": str(self.requests_per_window),
                         "X-RateLimit-Remaining": "0",
-                        "X-RateLimit-Reset": str(
-                            int(now + self.window_seconds)
-                        ),
+                        "X-RateLimit-Reset": str(int(now + self.window_seconds)),
                     },
                 )
 

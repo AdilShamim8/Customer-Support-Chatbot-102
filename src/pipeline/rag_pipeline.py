@@ -30,16 +30,9 @@ from src.generation.llm_client import (
     Message,
     MessageRole,
 )
-from src.generation.prompt_engine import (
-    PromptConfig,
-    PromptEngine,
-)
+from src.generation.prompt_engine import PromptConfig, PromptEngine
 from src.pipeline.conversation import ConversationManager
-from src.retrieval.retriever import (
-    RetrievalConfig,
-    RetrievalResult,
-    Retriever,
-)
+from src.retrieval.retriever import RetrievalConfig, RetrievalResult, Retriever
 
 logger = structlog.get_logger(__name__)
 
@@ -47,14 +40,11 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class RAGConfig:
     """Full RAG pipeline configuration."""
+
     # Retrieval
-    retrieval_config: RetrievalConfig = field(
-        default_factory=RetrievalConfig
-    )
+    retrieval_config: RetrievalConfig = field(default_factory=RetrievalConfig)
     # Prompt Engineering
-    prompt_config: PromptConfig = field(
-        default_factory=PromptConfig
-    )
+    prompt_config: PromptConfig = field(default_factory=PromptConfig)
     # Generation
     temperature: float = 0.1
     max_tokens: int = settings.max_response_tokens
@@ -69,6 +59,7 @@ class RAGConfig:
 @dataclass
 class RAGResponse:
     """Complete RAG pipeline response."""
+
     answer: str
     sources: list[dict]
     retrieval_result: RetrievalResult
@@ -167,9 +158,7 @@ class RAGPipeline:
         conversation = None
         history = []
         if conversation_id:
-            conversation = self.conversation_manager.get_or_create(
-                conversation_id
-            )
+            conversation = self.conversation_manager.get_or_create(conversation_id)
             history = conversation.get_messages()
 
         # Step 2: Query reformulation for conversational context
@@ -239,9 +228,7 @@ class RAGPipeline:
 
         # Step 8: Update conversation history
         if conversation:
-            conversation.add_message(
-                Message(role=MessageRole.USER, content=user_query)
-            )
+            conversation.add_message(Message(role=MessageRole.USER, content=user_query))
             conversation.add_message(
                 Message(role=MessageRole.ASSISTANT, content=llm_response.content)
             )
@@ -412,9 +399,7 @@ class RAGPipeline:
         # Save to conversation after streaming completes
         if conversation:
             conversation.add_message(Message(role=MessageRole.USER, content=user_query))
-            conversation.add_message(
-                Message(role=MessageRole.ASSISTANT, content=full_response)
-            )
+            conversation.add_message(Message(role=MessageRole.ASSISTANT, content=full_response))
             self.conversation_manager.save(conversation)
 
     # ── Internal Helpers ──────────────────────────────────────────────────────
@@ -444,7 +429,7 @@ class RAGPipeline:
                 max_tokens=150,
             )
             response = self.llm.complete(request)
-            reformulated = response.content.strip().strip('"\'')
+            reformulated = response.content.strip().strip("\"'")
 
             # Don't use if it's basically the same
             if reformulated.lower() == query.lower():
@@ -465,7 +450,7 @@ class RAGPipeline:
         """Check if answer is grounded in retrieved context."""
         messages = self.prompt_engine.build_hallucination_check_prompt(
             question=question,
-            context=context[:3000],   # Limit for token budget
+            context=context[:3000],  # Limit for token budget
             answer=answer,
         )
 

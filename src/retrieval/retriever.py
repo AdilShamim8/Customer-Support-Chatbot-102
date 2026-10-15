@@ -19,6 +19,7 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class RetrievalConfig:
     """Configuration for a retrieval request."""
+
     top_k_retrieval: int = settings.top_k_retrieval
     top_k_rerank: int = settings.top_k_rerank
     similarity_threshold: float = settings.similarity_threshold
@@ -31,6 +32,7 @@ class RetrievalConfig:
 @dataclass
 class RetrievalResult:
     """Complete retrieval result with provenance."""
+
     query: str
     chunks: list[SearchResult]
     config: RetrievalConfig
@@ -65,12 +67,14 @@ class RetrievalResult:
             doc_id = chunk.doc_id
             if doc_id not in seen:
                 seen.add(doc_id)
-                sources.append({
-                    "doc_id": doc_id,
-                    "title": chunk.metadata.get("title", "Unknown"),
-                    "source": chunk.metadata.get("source", ""),
-                    "doc_type": chunk.metadata.get("doc_type", ""),
-                })
+                sources.append(
+                    {
+                        "doc_id": doc_id,
+                        "title": chunk.metadata.get("title", "Unknown"),
+                        "source": chunk.metadata.get("source", ""),
+                        "doc_type": chunk.metadata.get("doc_type", ""),
+                    }
+                )
 
         return sources
 
@@ -141,7 +145,7 @@ class Retriever:
                 text=search_query_text,
                 top_k=config.top_k_retrieval,
                 filters=config.filters,
-                min_score=0.0,    # Filter after reranking
+                min_score=0.0,  # Filter after reranking
             )
 
             results = self.hybrid_index.search(
@@ -181,17 +185,14 @@ class Retriever:
                 retrieval_metadata = {"reranked": True, "reranker": type(self.reranker).__name__}
             except Exception as e:
                 logger.error("Reranking failed, using original order", error=str(e))
-                final_results = all_results[:config.top_k_rerank]
+                final_results = all_results[: config.top_k_rerank]
                 retrieval_metadata = {"reranked": False, "rerank_error": str(e)}
         else:
-            final_results = all_results[:config.top_k_rerank]
+            final_results = all_results[: config.top_k_rerank]
             retrieval_metadata = {"reranked": False}
 
         # Step 4: Apply similarity threshold
-        filtered_results = [
-            r for r in final_results
-            if r.score >= config.similarity_threshold
-        ]
+        filtered_results = [r for r in final_results if r.score >= config.similarity_threshold]
 
         # Always return at least 1 result if we have any
         if not filtered_results and final_results:
@@ -228,9 +229,9 @@ class Retriever:
 
         # Remove question words for keyword search
         import re
+
         stripped = re.sub(
-            r'^(what|how|why|when|where|who|can|does|do|is|are)\s+',
-            '', query.lower()
+            r"^(what|how|why|when|where|who|can|does|do|is|are)\s+", "", query.lower()
         ).strip()
         if stripped and stripped != query.lower():
             expansions.append(stripped)

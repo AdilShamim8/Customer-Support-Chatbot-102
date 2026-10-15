@@ -64,39 +64,51 @@ class TestChatEndpoint:
         conv_id = str(uuid.uuid4())
 
         # First turn
-        r1 = client.post("/api/v1/chat/", json={
-            "message": "How do I reset my password?",
-            "conversation_id": conv_id,
-        })
+        r1 = client.post(
+            "/api/v1/chat/",
+            json={
+                "message": "How do I reset my password?",
+                "conversation_id": conv_id,
+            },
+        )
         assert r1.status_code == 200
         assert r1.json()["conversation_id"] == conv_id
 
         # Second turn - follow-up
-        r2 = client.post("/api/v1/chat/", json={
-            "message": "What if I don't get the email?",
-            "conversation_id": conv_id,
-        })
+        r2 = client.post(
+            "/api/v1/chat/",
+            json={
+                "message": "What if I don't get the email?",
+                "conversation_id": conv_id,
+            },
+        )
         assert r2.status_code == 200
         assert r2.json()["conversation_id"] == conv_id
         # Follow-up should be reformulated
         assert r2.json().get("reformulated_query") is not None
 
     def test_user_context_accepted(self, client):
-        response = client.post("/api/v1/chat/", json={
-            "message": "I need help with my account.",
-            "user_context": {
-                "customer_name": "Jane Doe",
-                "account_tier": "premium",
-                "technical_level": "advanced",
+        response = client.post(
+            "/api/v1/chat/",
+            json={
+                "message": "I need help with my account.",
+                "user_context": {
+                    "customer_name": "Jane Doe",
+                    "account_tier": "premium",
+                    "technical_level": "advanced",
+                },
             },
-        })
+        )
         assert response.status_code == 200
 
     def test_cot_strategy(self, client):
-        response = client.post("/api/v1/chat/", json={
-            "message": "My order is missing, what should I do?",
-            "prompt_strategy": "chain_of_thought",
-        })
+        response = client.post(
+            "/api/v1/chat/",
+            json={
+                "message": "My order is missing, what should I do?",
+                "prompt_strategy": "chain_of_thought",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["answer"]
@@ -110,9 +122,9 @@ class TestChatEndpoint:
         assert response.status_code == 422
 
     def test_response_metadata_present(self, client):
-        response = client.post("/api/v1/chat/", json={
-            "message": "How do I cancel my subscription?"
-        })
+        response = client.post(
+            "/api/v1/chat/", json={"message": "How do I cancel my subscription?"}
+        )
         assert response.status_code == 200
         data = response.json()
         metadata = data.get("metadata", {})
@@ -124,10 +136,13 @@ class TestChatEndpoint:
         conv_id = str(uuid.uuid4())
 
         # Create conversation
-        client.post("/api/v1/chat/", json={
-            "message": "Hello",
-            "conversation_id": conv_id,
-        })
+        client.post(
+            "/api/v1/chat/",
+            json={
+                "message": "Hello",
+                "conversation_id": conv_id,
+            },
+        )
 
         # Clear it
         response = client.delete(f"/api/v1/chat/{conv_id}")
@@ -135,13 +150,16 @@ class TestChatEndpoint:
         assert response.json()["status"] == "cleared"
 
     def test_feedback_endpoint(self, client):
-        response = client.post("/api/v1/chat/feedback", json={
-            "conversation_id": str(uuid.uuid4()),
-            "message_index": 0,
-            "rating": 5,
-            "was_helpful": True,
-            "feedback_text": "Very helpful, thank you!",
-        })
+        response = client.post(
+            "/api/v1/chat/feedback",
+            json={
+                "conversation_id": str(uuid.uuid4()),
+                "message_index": 0,
+                "rating": 5,
+                "was_helpful": True,
+                "feedback_text": "Very helpful, thank you!",
+            },
+        )
         assert response.status_code == 200
         assert response.json()["status"] == "accepted"
 
@@ -159,9 +177,7 @@ class TestAdminEndpoints:
     def test_document_upload(self, client, tmp_path):
         # Create a test document
         test_file = tmp_path / "test.md"
-        test_file.write_text(
-            "# Test Document\n\nThis is test content for upload testing."
-        )
+        test_file.write_text("# Test Document\n\nThis is test content for upload testing.")
 
         with open(test_file, "rb") as f:
             response = client.post(
@@ -196,12 +212,8 @@ class TestAdminEndpoints:
                         {
                             "question": "How do I reset my password?",
                             "answer": "Click Forgot Password on the login page.",
-                            "contexts": [
-                                "To reset your password, click Forgot Password."
-                            ],
-                            "ground_truth": (
-                                "Click Forgot Password on the login page."
-                            ),
+                            "contexts": ["To reset your password, click Forgot Password."],
+                            "ground_truth": ("Click Forgot Password on the login page."),
                         }
                     ],
                     "dataset_name": "e2e_test",

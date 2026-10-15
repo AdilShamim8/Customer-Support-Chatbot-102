@@ -26,8 +26,10 @@ class PromptStrategyEnum(str, Enum):
 
 # ─── Request Schemas ──────────────────────────────────────────────────────────
 
+
 class UserContext(BaseModel):
     """Optional user profile context passed with each request."""
+
     customer_name: str | None = None
     account_tier: SupportTier = SupportTier.STANDARD
     customer_since: str | None = None
@@ -43,6 +45,7 @@ class UserContext(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request to the main chat endpoint."""
+
     message: str = Field(
         ...,
         min_length=1,
@@ -52,7 +55,7 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = Field(
         None,
         description="Session ID for multi-turn conversation. "
-                    "If not provided, a new session is created.",
+        "If not provided, a new session is created.",
     )
     user_context: UserContext | None = Field(
         None,
@@ -81,6 +84,7 @@ class ChatRequest(BaseModel):
 
 class FeedbackRequest(BaseModel):
     """Customer feedback on a response."""
+
     conversation_id: str
     message_index: int = Field(..., ge=0)
     rating: int = Field(..., ge=1, le=5)
@@ -91,8 +95,9 @@ class FeedbackRequest(BaseModel):
 
 class DocumentIngestRequest(BaseModel):
     """Request to ingest a document from URL or base64."""
+
     url: str | None = None
-    content: str | None = None   # Base64 encoded content
+    content: str | None = None  # Base64 encoded content
     filename: str | None = None
     doc_type: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -101,6 +106,7 @@ class DocumentIngestRequest(BaseModel):
 
 class EvaluationRequest(BaseModel):
     """Request to run evaluation on test samples."""
+
     samples: list[dict] = Field(
         ...,
         description="List of {question, answer, contexts, ground_truth} dicts",
@@ -112,8 +118,10 @@ class EvaluationRequest(BaseModel):
 
 # ─── Response Schemas ─────────────────────────────────────────────────────────
 
+
 class SourceReference(BaseModel):
     """A source document reference in the response."""
+
     doc_id: str
     title: str
     source: str = ""
@@ -122,6 +130,7 @@ class SourceReference(BaseModel):
 
 class ChatResponse(BaseModel):
     """Response from the chat endpoint."""
+
     answer: str
     conversation_id: str
     sources: list[SourceReference] = Field(default_factory=list)
@@ -165,6 +174,7 @@ class ChatResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     version: str = "1.0.0"
     components: dict[str, str] = Field(default_factory=dict)
@@ -173,6 +183,7 @@ class HealthResponse(BaseModel):
 
 class EvaluationResponse(BaseModel):
     """Response from evaluation endpoint."""
+
     dataset_name: str
     total_samples: int
     overall_pass_rate: float
@@ -183,6 +194,7 @@ class EvaluationResponse(BaseModel):
 
 class StatsResponse(BaseModel):
     """Pipeline statistics response."""
+
     vector_store_count: int
     keyword_index_count: int
     document_count: int

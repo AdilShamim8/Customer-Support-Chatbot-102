@@ -12,12 +12,7 @@ from enum import Enum
 from typing import Any
 
 import structlog
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from configs.settings import LLMProvider, settings
 
@@ -34,6 +29,7 @@ class MessageRole(str, Enum):
 @dataclass
 class Message:
     """A single conversation message."""
+
     role: MessageRole
     content: str
     name: str | None = None
@@ -49,6 +45,7 @@ class Message:
 @dataclass
 class LLMResponse:
     """Standardized LLM response across all providers."""
+
     content: str
     model: str
     prompt_tokens: int = 0
@@ -81,6 +78,7 @@ class LLMResponse:
 @dataclass
 class LLMRequest:
     """Standardized LLM request."""
+
     messages: list[Message]
     model: str | None = None
     temperature: float = 0.0
@@ -88,35 +86,35 @@ class LLMRequest:
     top_p: float = 1.0
     stream: bool = False
     stop_sequences: list[str] = field(default_factory=list)
-    response_format: dict | None = None    # {"type": "json_object"}
+    response_format: dict | None = None  # {"type": "json_object"}
 
 
 # ─── Pricing Table (USD per 1K tokens) ──────────────────────────────────────
 
 PRICING = {
     # OpenAI
-    "gpt-4-turbo-preview":   {"prompt": 0.01,   "completion": 0.03},
-    "gpt-4o":                {"prompt": 0.005,  "completion": 0.015},
-    "gpt-4o-mini":           {"prompt": 0.00015,"completion": 0.0006},
-    "gpt-3.5-turbo":         {"prompt": 0.0005, "completion": 0.0015},
+    "gpt-4-turbo-preview": {"prompt": 0.01, "completion": 0.03},
+    "gpt-4o": {"prompt": 0.005, "completion": 0.015},
+    "gpt-4o-mini": {"prompt": 0.00015, "completion": 0.0006},
+    "gpt-3.5-turbo": {"prompt": 0.0005, "completion": 0.0015},
     # Anthropic
-    "claude-3-opus-20240229":  {"prompt": 0.015,  "completion": 0.075},
-    "claude-3-sonnet-20240229":{"prompt": 0.003,  "completion": 0.015},
-    "claude-3-haiku-20240307": {"prompt": 0.00025,"completion": 0.00125},
+    "claude-3-opus-20240229": {"prompt": 0.015, "completion": 0.075},
+    "claude-3-sonnet-20240229": {"prompt": 0.003, "completion": 0.015},
+    "claude-3-haiku-20240307": {"prompt": 0.00025, "completion": 0.00125},
 }
 
 
 def calculate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
     """Calculate USD cost for a request."""
     pricing = PRICING.get(model, {"prompt": 0.01, "completion": 0.03})
-    cost = (
-        (prompt_tokens / 1000) * pricing["prompt"]
-        + (completion_tokens / 1000) * pricing["completion"]
-    )
+    cost = (prompt_tokens / 1000) * pricing["prompt"] + (completion_tokens / 1000) * pricing[
+        "completion"
+    ]
     return round(cost, 8)
 
 
 # ─── Base Client ─────────────────────────────────────────────────────────────
+
 
 class BaseLLMClient(ABC):
     """Abstract LLM client interface."""
@@ -181,13 +179,13 @@ class BaseLLMClient(ABC):
             "total_cost_usd": round(self._total_cost_usd, 6),
             "request_count": self._request_count,
             "avg_tokens_per_request": (
-                self._total_tokens_used / self._request_count
-                if self._request_count > 0 else 0
+                self._total_tokens_used / self._request_count if self._request_count > 0 else 0
             ),
         }
 
 
 # ─── OpenAI Client ────────────────────────────────────────────────────────────
+
 
 class OpenAIClient(BaseLLMClient):
     """
@@ -261,9 +259,7 @@ class OpenAIClient(BaseLLMClient):
         wait=wait_exponential(multiplier=1, min=4, max=20),
     )
     # tenacity decorator typing - see complete() above.
-    async def acomplete(  # type: ignore[override]
-        self, request: LLMRequest
-    ) -> LLMResponse:
+    async def acomplete(self, request: LLMRequest) -> LLMResponse:  # type: ignore[override]
         start_time = time.time()
 
         params = self._build_params(request)
@@ -325,6 +321,7 @@ class OpenAIClient(BaseLLMClient):
 
 # ─── Anthropic Client ─────────────────────────────────────────────────────────
 
+
 class AnthropicClient(BaseLLMClient):
     """
     Anthropic Claude API client.
@@ -339,12 +336,8 @@ class AnthropicClient(BaseLLMClient):
         super().__init__(model)
         import anthropic
 
-        self.client = anthropic.Anthropic(
-            api_key=api_key or settings.anthropic_api_key
-        )
-        self.async_client = anthropic.AsyncAnthropic(
-            api_key=api_key or settings.anthropic_api_key
-        )
+        self.client = anthropic.Anthropic(api_key=api_key or settings.anthropic_api_key)
+        self.async_client = anthropic.AsyncAnthropic(api_key=api_key or settings.anthropic_api_key)
         logger.info("Anthropic client initialized", model=model)
 
     @retry(
@@ -352,9 +345,7 @@ class AnthropicClient(BaseLLMClient):
         wait=wait_exponential(multiplier=1, min=4, max=20),
     )
     # tenacity decorator typing - see OpenAI client's complete().
-    def complete(  # type: ignore[override]
-        self, request: LLMRequest
-    ) -> LLMResponse:
+    def complete(self, request: LLMRequest) -> LLMResponse:  # type: ignore[override]
         start_time = time.time()
 
         system_prompt, messages = self._split_messages(request.messages)
@@ -439,9 +430,7 @@ class AnthropicClient(BaseLLMClient):
             async for text in stream.text_stream:
                 yield text
 
-    def _split_messages(
-        self, messages: list[Message]
-    ) -> tuple[str, list[dict]]:
+    def _split_messages(self, messages: list[Message]) -> tuple[str, list[dict]]:
         """
         Anthropic requires system prompt separate from messages.
         """
@@ -458,6 +447,7 @@ class AnthropicClient(BaseLLMClient):
 
 
 # ─── LLM Client Factory ───────────────────────────────────────────────────────
+
 
 class LLMClientFactory:
     """Factory for creating LLM clients."""

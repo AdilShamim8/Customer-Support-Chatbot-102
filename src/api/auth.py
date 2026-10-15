@@ -33,10 +33,11 @@ HTTP_BEARER = HTTPBearer(auto_error=False)
 
 class UserRole(str, Enum):
     """User roles for RBAC."""
-    VIEWER = "viewer"      # Can chat only
-    USER = "user"          # Can chat + submit feedback
-    ADMIN = "admin"        # Full access including document management
-    SYSTEM = "system"      # Internal service calls
+
+    VIEWER = "viewer"  # Can chat only
+    USER = "user"  # Can chat + submit feedback
+    ADMIN = "admin"  # Full access including document management
+    SYSTEM = "system"  # Internal service calls
 
 
 class AuthenticatedUser:
@@ -86,9 +87,7 @@ class APIKeyStore:
         hashed = self._hash_key(api_key)
         self._keys[hashed] = (user_id, role, metadata or {})
 
-    def validate_key(
-        self, api_key: str
-    ) -> AuthenticatedUser | None:
+    def validate_key(self, api_key: str) -> AuthenticatedUser | None:
         """Validate API key and return user if valid."""
         hashed = self._hash_key(api_key)
         entry = self._keys.get(hashed)
@@ -142,6 +141,7 @@ def init_api_keys(settings) -> None:
 
 # ── FastAPI Dependencies ───────────────────────────────────────────────────
 
+
 async def get_current_user(
     api_key: str | None = Security(API_KEY_HEADER),
     bearer: HTTPAuthorizationCredentials | None = Security(HTTP_BEARER),
@@ -160,8 +160,7 @@ async def get_current_user(
     if not key_to_validate:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required. "
-                   "Provide X-API-Key header or Bearer token.",
+            detail="Authentication required. " "Provide X-API-Key header or Bearer token.",
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
@@ -195,6 +194,7 @@ def require_role(required_role: UserRole):
             user: AuthenticatedUser = Depends(require_role(UserRole.ADMIN))
         ):
     """
+
     async def role_checker(
         user: AuthenticatedUser = Depends(get_current_user),
     ) -> AuthenticatedUser:
@@ -207,8 +207,7 @@ def require_role(required_role: UserRole):
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Insufficient permissions. "
-                       f"Required role: {required_role.value}",
+                detail=f"Insufficient permissions. " f"Required role: {required_role.value}",
             )
         return user
 

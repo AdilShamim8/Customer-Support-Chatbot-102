@@ -14,9 +14,9 @@ import pytest
 def test_version_is_semver():
     from src.__version__ import __version__
 
-    assert re.fullmatch(r"\d+\.\d+\.\d+", __version__), (
-        f"version {__version__!r} must be plain semver for tag matching"
-    )
+    assert re.fullmatch(
+        r"\d+\.\d+\.\d+", __version__
+    ), f"version {__version__!r} must be plain semver for tag matching"
 
 
 def test_version_exposed_at_package_level():

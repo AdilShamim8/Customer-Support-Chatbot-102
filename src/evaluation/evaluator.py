@@ -13,12 +13,7 @@ import numpy as np
 import structlog
 from tqdm import tqdm
 
-from src.evaluation.metrics import (
-    EvaluationResult,
-    EvaluationSample,
-    LLMJudge,
-    StatisticalMetrics,
-)
+from src.evaluation.metrics import EvaluationResult, EvaluationSample, LLMJudge, StatisticalMetrics
 from src.pipeline.rag_pipeline import RAGPipeline
 
 logger = structlog.get_logger(__name__)
@@ -26,12 +21,14 @@ logger = structlog.get_logger(__name__)
 
 # ─── Evaluation Report ────────────────────────────────────────────────────────
 
+
 @dataclass
 class EvaluationReport:
     """
     Aggregate evaluation report for a dataset.
     Contains per-metric averages, distributions, and pass rates.
     """
+
     dataset_name: str
     total_samples: int
     results: list[EvaluationResult] = field(default_factory=list)
@@ -68,9 +65,7 @@ class EvaluationReport:
             )
 
         # Overall pass rate
-        self.overall_pass_rate = float(
-            np.mean([1.0 if r.passed else 0.0 for r in self.results])
-        )
+        self.overall_pass_rate = float(np.mean([1.0 if r.passed else 0.0 for r in self.results]))
 
     def to_dict(self) -> dict:
         return {
@@ -78,15 +73,9 @@ class EvaluationReport:
             "total_samples": self.total_samples,
             "overall_pass_rate": round(self.overall_pass_rate, 4),
             "evaluation_time_seconds": round(self.evaluation_time_seconds, 2),
-            "metric_averages": {
-                k: round(v, 4) for k, v in self.metric_averages.items()
-            },
-            "metric_std": {
-                k: round(v, 4) for k, v in self.metric_std.items()
-            },
-            "pass_rates": {
-                k: round(v, 4) for k, v in self.pass_rates.items()
-            },
+            "metric_averages": {k: round(v, 4) for k, v in self.metric_averages.items()},
+            "metric_std": {k: round(v, 4) for k, v in self.metric_std.items()},
+            "pass_rates": {k: round(v, 4) for k, v in self.pass_rates.items()},
             "metadata": self.metadata,
         }
 
@@ -121,15 +110,14 @@ class EvaluationReport:
             pass_rate = self.pass_rates.get(metric, 0.0)
             status = "✅" if pass_rate >= 0.8 else "⚠️" if pass_rate >= 0.6 else "❌"
             print(
-                f"  {status} {metric:<25} "
-                f"avg={avg:.3f} ± {std:.3f}  "
-                f"pass={pass_rate:.1%}"
+                f"  {status} {metric:<25} " f"avg={avg:.3f} ± {std:.3f}  " f"pass={pass_rate:.1%}"
             )
 
         print("=" * 60 + "\n")
 
 
 # ─── Evaluator ────────────────────────────────────────────────────────────────
+
 
 class RAGEvaluator:
     """
@@ -228,9 +216,7 @@ class RAGEvaluator:
 
             # 7. Answer Length
             if sample.answer:
-                length_score = self.stat_metrics.answer_length_score(
-                    answer=sample.answer
-                )
+                length_score = self.stat_metrics.answer_length_score(answer=sample.answer)
                 result.add_score(length_score)
 
             # 8. Citation Precision
@@ -284,17 +270,12 @@ class RAGEvaluator:
                 eval_sample = EvaluationSample(
                     question=sample.question,
                     answer=rag_response.answer,
-                    contexts=[
-                        chunk.content
-                        for chunk in rag_response.retrieval_result.chunks
-                    ],
+                    contexts=[chunk.content for chunk in rag_response.retrieval_result.chunks],
                     ground_truth=sample.ground_truth,
                     question_id=sample.question_id,
                     metadata={
                         **sample.metadata,
-                        "source_titles": [
-                            s.get("title", "") for s in rag_response.sources
-                        ],
+                        "source_titles": [s.get("title", "") for s in rag_response.sources],
                     },
                 )
 
@@ -353,6 +334,7 @@ class RAGEvaluator:
 
 
 # ─── RAGAS Integration ────────────────────────────────────────────────────────
+
 
 class RAGASEvaluator:
     """

@@ -22,8 +22,9 @@ def simple_tokenize(text: str) -> list[str]:
     In production, consider NLTK or spaCy for better tokenization.
     """
     import re
+
     # Lowercase and split on non-alphanumeric
-    tokens = re.findall(r'\b[a-zA-Z0-9]+\b', text.lower())
+    tokens = re.findall(r"\b[a-zA-Z0-9]+\b", text.lower())
     # Remove very short tokens
     return [t for t in tokens if len(t) > 1]
 
@@ -67,9 +68,7 @@ class BM25Index(BaseKeywordIndex):
         self._chunks.extend(chunks)
 
         # Tokenize new chunks
-        new_tokenized = [
-            simple_tokenize(chunk.content) for chunk in chunks
-        ]
+        new_tokenized = [simple_tokenize(chunk.content) for chunk in chunks]
         self._tokenized_corpus.extend(new_tokenized)
 
         # Rebuild BM25 index (required on each addition)
@@ -102,7 +101,7 @@ class BM25Index(BaseKeywordIndex):
             range(len(scores)),
             key=lambda i: scores[i],
             reverse=True,
-        )[:query.top_k]
+        )[: query.top_k]
 
         results = []
         max_score = max(scores) if max(scores) > 0 else 1.0
@@ -115,14 +114,16 @@ class BM25Index(BaseKeywordIndex):
             # Normalize BM25 score to 0-1 range
             normalized_score = float(scores[idx]) / max_score
 
-            results.append(SearchResult(
-                chunk_id=chunk.chunk_id,
-                doc_id=chunk.doc_id,
-                content=chunk.content,
-                score=normalized_score,
-                metadata=chunk.metadata,
-                rank=rank,
-            ))
+            results.append(
+                SearchResult(
+                    chunk_id=chunk.chunk_id,
+                    doc_id=chunk.doc_id,
+                    content=chunk.content,
+                    score=normalized_score,
+                    metadata=chunk.metadata,
+                    rank=rank,
+                )
+            )
 
         return results
 
@@ -198,7 +199,7 @@ class ElasticsearchIndex(BaseKeywordIndex):
                         "fields": {
                             "exact": {"type": "keyword"},
                             "suggest": {"type": "search_as_you_type"},
-                        }
+                        },
                     },
                     "section_title": {"type": "text"},
                     "source": {"type": "keyword"},
@@ -226,10 +227,10 @@ class ElasticsearchIndex(BaseKeywordIndex):
                         "english_stemmer": {
                             "type": "stemmer",
                             "language": "english",
-                        }
-                    }
-                }
-            }
+                        },
+                    },
+                },
+            },
         }
 
         self.es.indices.create(index=self.index_name, body=mappings)
@@ -240,22 +241,25 @@ class ElasticsearchIndex(BaseKeywordIndex):
 
         actions = []
         for chunk in chunks:
-            actions.append({
-                "_index": self.index_name,
-                "_id": chunk.chunk_id,
-                "_source": {
-                    "chunk_id": chunk.chunk_id,
-                    "doc_id": chunk.doc_id,
-                    "content": chunk.content,
-                    "section_title": chunk.section_title or "",
-                    "chunk_index": chunk.chunk_index,
-                    "token_count": chunk.token_count,
-                    **{
-                        k: v for k, v in chunk.metadata.items()
-                        if isinstance(v, str | int | float | bool)
+            actions.append(
+                {
+                    "_index": self.index_name,
+                    "_id": chunk.chunk_id,
+                    "_source": {
+                        "chunk_id": chunk.chunk_id,
+                        "doc_id": chunk.doc_id,
+                        "content": chunk.content,
+                        "section_title": chunk.section_title or "",
+                        "chunk_index": chunk.chunk_index,
+                        "token_count": chunk.token_count,
+                        **{
+                            k: v
+                            for k, v in chunk.metadata.items()
+                            if isinstance(v, str | int | float | bool)
+                        },
                     },
                 }
-            })
+            )
 
         if actions:
             success, errors = bulk(self.es, actions)
@@ -307,15 +311,20 @@ class ElasticsearchIndex(BaseKeywordIndex):
             source = hit["_source"]
             normalized_score = hit["_score"] / max_score
 
-            results.append(SearchResult(
-                chunk_id=source["chunk_id"],
-                doc_id=source["doc_id"],
-                content=source["content"],
-                score=normalized_score,
-                metadata={k: v for k, v in source.items()
-                          if k not in ["chunk_id", "doc_id", "content"]},
-                rank=rank,
-            ))
+            results.append(
+                SearchResult(
+                    chunk_id=source["chunk_id"],
+                    doc_id=source["doc_id"],
+                    content=source["content"],
+                    score=normalized_score,
+                    metadata={
+                        k: v
+                        for k, v in source.items()
+                        if k not in ["chunk_id", "doc_id", "content"]
+                    },
+                    rank=rank,
+                )
+            )
 
         return results
 

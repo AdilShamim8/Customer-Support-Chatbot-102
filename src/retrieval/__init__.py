@@ -1,4 +1,5 @@
 """Retrieval modules: retriever and reranker."""
+
 from src.retrieval.reranker import RerankerFactory
 from src.retrieval.retriever import RetrievalConfig, RetrievalResult, Retriever
 

@@ -36,9 +36,9 @@ class TestMetricExistence:
         ],
     )
     def test_metric_exists(self, metric_name):
-        assert hasattr(m, metric_name), (
-            f"{metric_name} missing - alerts/dashboards referencing it go blind"
-        )
+        assert hasattr(
+            m, metric_name
+        ), f"{metric_name} missing - alerts/dashboards referencing it go blind"
 
 
 class TestInstrumentorContract:

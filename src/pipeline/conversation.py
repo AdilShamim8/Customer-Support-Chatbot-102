@@ -20,23 +20,22 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class Conversation:
     """Represents a customer support conversation session."""
+
     conversation_id: str
-    created_at: str = field(
-        default_factory=lambda: datetime.utcnow().isoformat()
-    )
-    updated_at: str = field(
-        default_factory=lambda: datetime.utcnow().isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     messages: list[dict] = field(default_factory=list)
     user_context: dict = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
 
     def add_message(self, message: Message) -> None:
-        self.messages.append({
-            "role": message.role.value,
-            "content": message.content,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        self.messages.append(
+            {
+                "role": message.role.value,
+                "content": message.content,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         self.updated_at = datetime.utcnow().isoformat()
 
     def get_messages(
@@ -46,7 +45,7 @@ class Conversation:
         """Get messages as Message objects, limited to recent turns."""
         # Each turn = 1 user + 1 assistant message
         # max_turns * 2 = total message limit
-        recent = self.messages[-(max_turns * 2):]
+        recent = self.messages[-(max_turns * 2) :]
 
         return [
             Message(
@@ -104,6 +103,7 @@ class ConversationManager:
         if use_redis:
             try:
                 import redis
+
                 self._redis = redis.from_url(
                     settings.redis_url,
                     decode_responses=True,
@@ -171,9 +171,7 @@ class ConversationManager:
 
         self._memory_store.pop(conversation_id, None)
 
-    def create_new(
-        self, user_context: dict | None = None
-    ) -> Conversation:
+    def create_new(self, user_context: dict | None = None) -> Conversation:
         conv = Conversation.new(user_context=user_context)
         self.save(conv)
         return conv

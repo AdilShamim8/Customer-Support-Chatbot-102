@@ -1,4 +1,5 @@
 """Indexing modules: vector store, keyword index, embeddings."""
+
 from src.indexing.embeddings import EmbeddingModelFactory, EmbeddingProvider
 from src.indexing.hybrid_index import HybridIndex
 from src.indexing.keyword_index import BM25Index

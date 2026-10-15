@@ -47,28 +47,47 @@ class TestEnvDocsMatchSettings:
         # Known service-level vars read directly from the process env by
         # docker/gunicorn/CI - intentionally NOT Settings fields
         infra_vars = {
-            "POSTGRES_PASSWORD", "ELASTIC_PASSWORD", "GRAFANA_PASSWORD",
-            "DB_POOL_SIZE", "DB_MAX_OVERFLOW", "DB_POOL_TIMEOUT",
-            "DB_POOL_RECYCLE", "MAX_UPLOAD_SIZE_MB", "COMPANY_NAME",
-            "SUPPORT_EMAIL", "ENABLE_AUTH", "CHECK_HALLUCINATION",
-            "HALLUCINATION_THRESHOLD", "ENABLE_QUERY_EXPANSION",
+            "POSTGRES_PASSWORD",
+            "ELASTIC_PASSWORD",
+            "GRAFANA_PASSWORD",
+            "DB_POOL_SIZE",
+            "DB_MAX_OVERFLOW",
+            "DB_POOL_TIMEOUT",
+            "DB_POOL_RECYCLE",
+            "MAX_UPLOAD_SIZE_MB",
+            "COMPANY_NAME",
+            "SUPPORT_EMAIL",
+            "ENABLE_AUTH",
+            "CHECK_HALLUCINATION",
+            "HALLUCINATION_THRESHOLD",
+            "ENABLE_QUERY_EXPANSION",
             "WEB_CONCURRENCY",  # gunicorn.conf.py reads this directly
         }
         lies = sorted(
-            var for var in set(documented)
-            if var.lower() not in fields and var not in infra_vars
+            var for var in set(documented) if var.lower() not in fields and var not in infra_vars
         )
         assert not lies, f".env.example documents settings that don't exist: {lies}"
 
     def test_critical_settings_are_documented(self):
         documented = documented_env_vars()
         must_document = [
-            "APP_ENV", "LOG_LEVEL", "SECRET_KEY", "API_RATE_LIMIT",
-            "LLM_PROVIDER", "OPENAI_API_KEY", "CHAT_MODEL",
-            "EMBEDDING_MODEL", "VECTOR_STORE_TYPE", "REDIS_URL",
-            "DATABASE_URL", "TOP_K_RETRIEVAL", "CHUNK_SIZE",
-            "SEMANTIC_CACHE_ENABLED", "ENABLE_RERANKING",
-            "REQUEST_TIMEOUT_SECONDS", "WEB_CONCURRENCY",
+            "APP_ENV",
+            "LOG_LEVEL",
+            "SECRET_KEY",
+            "API_RATE_LIMIT",
+            "LLM_PROVIDER",
+            "OPENAI_API_KEY",
+            "CHAT_MODEL",
+            "EMBEDDING_MODEL",
+            "VECTOR_STORE_TYPE",
+            "REDIS_URL",
+            "DATABASE_URL",
+            "TOP_K_RETRIEVAL",
+            "CHUNK_SIZE",
+            "SEMANTIC_CACHE_ENABLED",
+            "ENABLE_RERANKING",
+            "REQUEST_TIMEOUT_SECONDS",
+            "WEB_CONCURRENCY",
         ]
         undocumented = [var for var in must_document if var not in documented]
         assert not undocumented, f"Critical settings missing from .env.example: {undocumented}"

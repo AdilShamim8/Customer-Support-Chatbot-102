@@ -19,17 +19,18 @@ logger = structlog.get_logger(__name__)
 
 
 class ChunkingStrategy(str, Enum):
-    FIXED_SIZE = "fixed_size"         # Character/token-based fixed windows
-    SENTENCE = "sentence"              # Sentence boundary-aware
-    PARAGRAPH = "paragraph"            # Paragraph-based
-    SEMANTIC = "semantic"              # Semantic similarity-based
-    HIERARCHICAL = "hierarchical"      # Multi-level (document > section > chunk)
+    FIXED_SIZE = "fixed_size"  # Character/token-based fixed windows
+    SENTENCE = "sentence"  # Sentence boundary-aware
+    PARAGRAPH = "paragraph"  # Paragraph-based
+    SEMANTIC = "semantic"  # Semantic similarity-based
+    HIERARCHICAL = "hierarchical"  # Multi-level (document > section > chunk)
     SLIDING_WINDOW = "sliding_window"  # Overlapping windows
 
 
 @dataclass
 class DocumentChunk:
     """A chunk of a parsed document with full provenance tracking."""
+
     chunk_id: str
     doc_id: str
     content: str
@@ -127,9 +128,7 @@ class BaseChunker(ABC):
             **document.metadata,
         }
 
-    def _filter_short_chunks(
-        self, chunks: list[DocumentChunk]
-    ) -> list[DocumentChunk]:
+    def _filter_short_chunks(self, chunks: list[DocumentChunk]) -> list[DocumentChunk]:
         """Drop degenerate fragments - but never all of a document.
 
         Two guards keep the floor safe:
@@ -150,8 +149,7 @@ class BaseChunker(ABC):
         filtered = [c for c in chunks if len(c.content) >= effective_min]
         if not filtered:
             logger.warning(
-                "Short-chunk floor would drop the entire document; "
-                "keeping all chunks",
+                "Short-chunk floor would drop the entire document; " "keeping all chunks",
                 doc_id=chunks[0].doc_id,
                 floor=effective_min,
                 chunk_count=len(chunks),
@@ -192,21 +190,23 @@ class FixedSizeChunker(BaseChunker):
 
             # Try to end at a word boundary
             if end < len(content) and not content[end].isspace():
-                last_space = chunk_text.rfind(' ')
+                last_space = chunk_text.rfind(" ")
                 if last_space > self.chunk_size // 2:
                     end = start + last_space
                     chunk_text = content[start:end]
 
-            chunks.append(DocumentChunk(
-                chunk_id=self._make_chunk_id(document.doc_id, index),
-                doc_id=document.doc_id,
-                content=chunk_text.strip(),
-                metadata=base_metadata.copy(),
-                chunk_index=index,
-                start_char=start,
-                end_char=end,
-                token_count=self.token_counter.count(chunk_text),
-            ))
+            chunks.append(
+                DocumentChunk(
+                    chunk_id=self._make_chunk_id(document.doc_id, index),
+                    doc_id=document.doc_id,
+                    content=chunk_text.strip(),
+                    metadata=base_metadata.copy(),
+                    chunk_index=index,
+                    start_char=start,
+                    end_char=end,
+                    token_count=self.token_counter.count(chunk_text),
+                )
+            )
 
             start = max(start + 1, end - self.chunk_overlap)
             index += 1
@@ -226,9 +226,7 @@ class SentenceChunker(BaseChunker):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._sentence_pattern = re.compile(
-            r'(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])\n'
-        )
+        self._sentence_pattern = re.compile(r"(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])\n")
 
     def chunk(self, document: ParsedDocument) -> list[DocumentChunk]:
         logger.debug("Sentence chunking", doc_id=document.doc_id)
@@ -244,29 +242,26 @@ class SentenceChunker(BaseChunker):
         for sentence in sentences:
             sentence_size = len(sentence)
 
-            if (
-                current_size + sentence_size > self.chunk_size
-                and current_sentences
-            ):
+            if current_size + sentence_size > self.chunk_size and current_sentences:
                 # Emit current chunk
                 chunk_text = " ".join(current_sentences)
                 end_char = start_char + len(chunk_text)
 
-                chunks.append(DocumentChunk(
-                    chunk_id=self._make_chunk_id(document.doc_id, index),
-                    doc_id=document.doc_id,
-                    content=chunk_text.strip(),
-                    metadata=base_metadata.copy(),
-                    chunk_index=index,
-                    start_char=start_char,
-                    end_char=end_char,
-                    token_count=self.token_counter.count(chunk_text),
-                ))
+                chunks.append(
+                    DocumentChunk(
+                        chunk_id=self._make_chunk_id(document.doc_id, index),
+                        doc_id=document.doc_id,
+                        content=chunk_text.strip(),
+                        metadata=base_metadata.copy(),
+                        chunk_index=index,
+                        start_char=start_char,
+                        end_char=end_char,
+                        token_count=self.token_counter.count(chunk_text),
+                    )
+                )
 
                 # Handle overlap - keep last few sentences
-                overlap_sentences = self._get_overlap_sentences(
-                    current_sentences
-                )
+                overlap_sentences = self._get_overlap_sentences(current_sentences)
                 start_char = end_char - sum(len(s) for s in overlap_sentences)
                 current_sentences = overlap_sentences
                 current_size = sum(len(s) for s in overlap_sentences)
@@ -278,17 +273,19 @@ class SentenceChunker(BaseChunker):
         # Final chunk
         if current_sentences:
             chunk_text = " ".join(current_sentences)
-            chunks.append(DocumentChunk(
-                chunk_id=self._make_chunk_id(document.doc_id, index),
-                doc_id=document.doc_id,
-                content=chunk_text.strip(),
-                metadata=base_metadata.copy(),
-                chunk_index=index,
-                start_char=start_char,
-                end_char=start_char + len(chunk_text),
-                total_chunks=index + 1,
-                token_count=self.token_counter.count(chunk_text),
-            ))
+            chunks.append(
+                DocumentChunk(
+                    chunk_id=self._make_chunk_id(document.doc_id, index),
+                    doc_id=document.doc_id,
+                    content=chunk_text.strip(),
+                    metadata=base_metadata.copy(),
+                    chunk_index=index,
+                    start_char=start_char,
+                    end_char=start_char + len(chunk_text),
+                    total_chunks=index + 1,
+                    token_count=self.token_counter.count(chunk_text),
+                )
+            )
 
         for chunk in chunks:
             chunk.total_chunks = len(chunks)
@@ -298,15 +295,10 @@ class SentenceChunker(BaseChunker):
     def _split_into_sentences(self, text: str) -> list[str]:
         """Split text into sentences using regex patterns."""
         # Split on sentence-ending punctuation followed by whitespace + capital
-        sentences = re.split(
-            r'(?<=[.!?])\s+(?=[A-Z"])|(?<=\n\n)',
-            text.strip()
-        )
+        sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z"])|(?<=\n\n)', text.strip())
         return [s.strip() for s in sentences if s.strip()]
 
-    def _get_overlap_sentences(
-        self, sentences: list[str]
-    ) -> list[str]:
+    def _get_overlap_sentences(self, sentences: list[str]) -> list[str]:
         """Get sentences for overlap based on character count."""
         overlap_sentences: list[str] = []
         overlap_size = 0
@@ -343,9 +335,7 @@ class HierarchicalChunker(BaseChunker):
                     continue
 
                 # Create section-level parent chunk (summary chunk)
-                parent_chunk_id = self._make_chunk_id(
-                    document.doc_id, len(all_chunks)
-                )
+                parent_chunk_id = self._make_chunk_id(document.doc_id, len(all_chunks))
 
                 section_metadata = {
                     **base_metadata,
@@ -406,7 +396,7 @@ class HierarchicalChunker(BaseChunker):
         """Split a section into chunks using paragraph-aware splitting."""
 
         # Split by paragraph (double newline)
-        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
 
         chunks: list[DocumentChunk] = []
         current_paragraphs: list[str] = []
@@ -419,23 +409,23 @@ class HierarchicalChunker(BaseChunker):
                 chunk_text = "\n\n".join(current_paragraphs)
                 # Prepend section title for context
                 contextualized = (
-                    f"[Section: {section_title}]\n\n{chunk_text}"
-                    if section_title
-                    else chunk_text
+                    f"[Section: {section_title}]\n\n{chunk_text}" if section_title else chunk_text
                 )
 
                 chunk_idx = start_index + len(chunks)
-                chunks.append(DocumentChunk(
-                    chunk_id=self._make_chunk_id(doc_id, chunk_idx),
-                    doc_id=doc_id,
-                    content=contextualized,
-                    metadata={**base_metadata, "has_section_context": True},
-                    chunk_index=chunk_idx,
-                    section_title=section_title,
-                    section_index=section_index,
-                    parent_chunk_id=parent_chunk_id,
-                    token_count=self.token_counter.count(contextualized),
-                ))
+                chunks.append(
+                    DocumentChunk(
+                        chunk_id=self._make_chunk_id(doc_id, chunk_idx),
+                        doc_id=doc_id,
+                        content=contextualized,
+                        metadata={**base_metadata, "has_section_context": True},
+                        chunk_index=chunk_idx,
+                        section_title=section_title,
+                        section_index=section_index,
+                        parent_chunk_id=parent_chunk_id,
+                        token_count=self.token_counter.count(contextualized),
+                    )
+                )
 
                 current_paragraphs = []
                 current_size = 0
@@ -447,22 +437,22 @@ class HierarchicalChunker(BaseChunker):
         if current_paragraphs:
             chunk_text = "\n\n".join(current_paragraphs)
             contextualized = (
-                f"[Section: {section_title}]\n\n{chunk_text}"
-                if section_title
-                else chunk_text
+                f"[Section: {section_title}]\n\n{chunk_text}" if section_title else chunk_text
             )
             chunk_idx = start_index + len(chunks)
-            chunks.append(DocumentChunk(
-                chunk_id=self._make_chunk_id(doc_id, chunk_idx),
-                doc_id=doc_id,
-                content=contextualized,
-                metadata={**base_metadata, "has_section_context": True},
-                chunk_index=chunk_idx,
-                section_title=section_title,
-                section_index=section_index,
-                parent_chunk_id=parent_chunk_id,
-                token_count=self.token_counter.count(contextualized),
-            ))
+            chunks.append(
+                DocumentChunk(
+                    chunk_id=self._make_chunk_id(doc_id, chunk_idx),
+                    doc_id=doc_id,
+                    content=contextualized,
+                    metadata={**base_metadata, "has_section_context": True},
+                    chunk_index=chunk_idx,
+                    section_title=section_title,
+                    section_index=section_index,
+                    parent_chunk_id=parent_chunk_id,
+                    token_count=self.token_counter.count(contextualized),
+                )
+            )
 
         return chunks
 

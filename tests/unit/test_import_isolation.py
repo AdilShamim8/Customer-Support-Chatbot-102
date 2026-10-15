@@ -13,6 +13,7 @@ sys.meta_path, so it can neither be polluted by, nor pollute, the parent
 test process's module cache. It stays honest in CI too, where the
 backends ARE installed: the blocker simulates their absence.
 """
+
 import subprocess
 import sys
 import textwrap

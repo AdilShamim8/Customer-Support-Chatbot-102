@@ -55,13 +55,13 @@ ERROR_TITLES: dict[str, str] = {
 class ProblemDetail(BaseModel):
     """RFC 7807 Problem Details response - the wire error contract."""
 
-    type: str           # URI reference identifying problem type
-    title: str          # Short human-readable summary
-    status: int         # HTTP status code
-    detail: str         # Specific explanation for this occurrence
-    instance: str       # URI reference identifying specific occurrence
-    code: str           # Machine-readable application error code
-    transient: bool     # Client retryability signal (ADR-0004)
+    type: str  # URI reference identifying problem type
+    title: str  # Short human-readable summary
+    status: int  # HTTP status code
+    detail: str  # Specific explanation for this occurrence
+    instance: str  # URI reference identifying specific occurrence
+    code: str  # Machine-readable application error code
+    transient: bool  # Client retryability signal (ADR-0004)
     errors: list[dict[str, Any]] | None = None  # Field-level errors
 
     class Config:
@@ -100,9 +100,7 @@ def register_error_handlers(app: FastAPI) -> None:
     """Register all error handlers on the FastAPI app."""
 
     @app.exception_handler(ChatbotError)
-    async def chatbot_error_handler(
-        request: Request, exc: ChatbotError
-    ) -> JSONResponse:
+    async def chatbot_error_handler(request: Request, exc: ChatbotError) -> JSONResponse:
         """Core hierarchy → problem+json, status and retryability included."""
         logger.warning(
             "Application error",
@@ -152,9 +150,7 @@ def register_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def unhandled_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Last-resort: never leak internals, never return a bare 500."""
         logger.error(
             "Unhandled exception",

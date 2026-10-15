@@ -1,5 +1,6 @@
 """
-src/database/connection.py — Database Connection and Session Management for the Customer Support Chatbot
+src/database/connection.py — Database connection and session management
+for the Customer Support Chatbot.
 Current setup has no connection pool configuration.
 Under load, this causes connection exhaustion.
 """
@@ -8,11 +9,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from configs.settings import settings
 
@@ -32,7 +29,7 @@ def create_engine(database_url: str):
             max_overflow=10,
             pool_timeout=30,
             pool_recycle=1800,
-            pool_pre_ping=True,   # Validate connections before use
+            pool_pre_ping=True,  # Validate connections before use
         )
     else:
         # Production: larger pool, no SQL echo

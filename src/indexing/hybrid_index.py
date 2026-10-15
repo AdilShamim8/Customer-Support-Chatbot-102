@@ -4,17 +4,11 @@ Uses Reciprocal Rank Fusion (RRF) to merge results from both indices.
 This is the gold standard for RAG retrieval quality.
 """
 
-
 import structlog
 
 from src.indexing.embeddings import BaseEmbeddingModel, EmbeddingModelFactory
 from src.indexing.keyword_index import BaseKeywordIndex, BM25Index
-from src.indexing.vector_store import (
-    BaseVectorStore,
-    SearchQuery,
-    SearchResult,
-    VectorStoreFactory,
-)
+from src.indexing.vector_store import BaseVectorStore, SearchQuery, SearchResult, VectorStoreFactory
 from src.parsing.chunking import DocumentChunk
 
 logger = structlog.get_logger(__name__)
@@ -66,14 +60,16 @@ def reciprocal_rank_fusion(
     merged = []
     for rank, chunk_id in enumerate(sorted_ids):
         result = chunk_results[chunk_id]
-        merged.append(SearchResult(
-            chunk_id=result.chunk_id,
-            doc_id=result.doc_id,
-            content=result.content,
-            score=chunk_scores[chunk_id],
-            metadata=result.metadata,
-            rank=rank,
-        ))
+        merged.append(
+            SearchResult(
+                chunk_id=result.chunk_id,
+                doc_id=result.doc_id,
+                content=result.content,
+                score=chunk_scores[chunk_id],
+                metadata=result.metadata,
+                rank=rank,
+            )
+        )
 
     return merged
 
@@ -96,9 +92,7 @@ class HybridIndex:
         keyword_weight: float = 0.3,
         rrf_k: int = 60,
     ):
-        self.embedding_model = (
-            embedding_model or EmbeddingModelFactory.create_default()
-        )
+        self.embedding_model = embedding_model or EmbeddingModelFactory.create_default()
         self.vector_store = vector_store or VectorStoreFactory.create_default(
             embedding_model=self.embedding_model
         )
@@ -172,7 +166,7 @@ class HybridIndex:
                     text=query.text,
                     top_k=query.top_k * 2,
                     filters=query.filters,
-                    min_score=0.0,       # Don't filter before fusion
+                    min_score=0.0,  # Don't filter before fusion
                 )
                 vector_results = self.vector_store.search(vector_query)
                 result_lists.append(vector_results)
@@ -219,10 +213,7 @@ class HybridIndex:
             )
 
         # Apply top_k and score threshold
-        filtered = [
-            r for r in merged[:query.top_k]
-            if r.score >= query.min_score
-        ]
+        filtered = [r for r in merged[: query.top_k] if r.score >= query.min_score]
 
         logger.debug(
             "Hybrid search complete",

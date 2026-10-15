@@ -44,9 +44,9 @@ class TestGoldenSetIntegrity:
 
     def test_categories_are_valid(self, filename):
         for record in load_golden(EVAL_DIR / filename):
-            assert record["category"] in VALID_CATEGORIES, (
-                f"{filename}: unknown category {record['category']!r}"
-            )
+            assert (
+                record["category"] in VALID_CATEGORIES
+            ), f"{filename}: unknown category {record['category']!r}"
 
     def test_questions_are_substantive(self, filename):
         # One-word questions test nothing; adversarial cases still need
@@ -57,7 +57,9 @@ class TestGoldenSetIntegrity:
     def test_expected_answers_present_when_answerable(self, filename):
         for record in load_golden(EVAL_DIR / filename):
             if record["answerable"]:
-                assert record["expected_answer"].strip(), (
+                assert record[
+                    "expected_answer"
+                ].strip(), (
                     f"{filename}: answerable case {record['question_id']} has empty expected answer"
                 )
 
@@ -72,19 +74,15 @@ class TestGoldenSetComposition:
 
     def test_unanswerable_cases_exist(self):
         """The refusal contract needs cases that MUST be declined."""
-        all_records = [
-            r for f in GOLDEN_FILES for r in load_golden(EVAL_DIR / f)
-        ]
+        all_records = [r for f in GOLDEN_FILES for r in load_golden(EVAL_DIR / f)]
         unanswerable = [r for r in all_records if not r["answerable"]]
         assert len(unanswerable) >= 5, "Safety floor too thin - add unanswerable cases"
 
     def test_adversarial_prompt_injection_exists(self):
-        all_records = [
-            r for f in GOLDEN_FILES for r in load_golden(EVAL_DIR / f)
-        ]
+        all_records = [r for f in GOLDEN_FILES for r in load_golden(EVAL_DIR / f)]
         injection_like = [
-            r for r in all_records
-            if "ignore" in r["question"].lower()
-            or "system prompt" in r["question"].lower()
+            r
+            for r in all_records
+            if "ignore" in r["question"].lower() or "system prompt" in r["question"].lower()
         ]
         assert injection_like, "No prompt-injection cases in the golden sets"
