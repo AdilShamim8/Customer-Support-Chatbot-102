@@ -1,0 +1,43 @@
+"""Core package: cross-cutting primitives shared by every layer."""
+
+from src.core.exceptions import (  # noqa: F401
+    AuthenticationError,
+    CacheUnavailableError,
+    ChatbotError,
+    ConfigurationError,
+    ContextLengthExceededError,
+    ConversationError,
+    ConversationNotFoundError,
+    ConversationRateLimitedError,
+    EmbeddingError,
+    GenerationError,
+    IndexCorruptionError,
+    IndexNotReadyError,
+    LLMProviderError,
+    LLMSafetyTriggeredError,
+    RateLimitExceededError,
+    RetrievalError,
+    StorageError,
+    VectorStoreError,
+)
+
+__all__ = [
+    "ChatbotError",
+    "ConfigurationError",
+    "RetrievalError",
+    "IndexNotReadyError",
+    "IndexCorruptionError",
+    "EmbeddingError",
+    "GenerationError",
+    "LLMProviderError",
+    "LLMSafetyTriggeredError",
+    "ContextLengthExceededError",
+    "ConversationError",
+    "ConversationNotFoundError",
+    "ConversationRateLimitedError",
+    "StorageError",
+    "VectorStoreError",
+    "CacheUnavailableError",
+    "AuthenticationError",
+    "RateLimitExceededError",
+]
