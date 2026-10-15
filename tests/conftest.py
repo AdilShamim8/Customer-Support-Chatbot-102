@@ -7,6 +7,8 @@ stubbed RAG pipeline so route logic is exercised without LLM calls.
 """
 
 import os
+from functools import cached_property
+from types import SimpleNamespace
 
 import pytest
 
@@ -25,6 +27,17 @@ class _StubPipeline:
 
     def __init__(self) -> None:
         self.calls = 0
+        self.seen_config_overrides: list = []
+
+    @cached_property
+    def config(self):
+        # Imported lazily: the route merges per-request choices onto
+        # pipeline.config with dataclasses.replace, so the stub must expose
+        # a real RAGConfig. Lazy import keeps the skip-based local design
+        # intact (route tests only run where the full stack exists).
+        from src.pipeline.rag_pipeline import RAGConfig
+
+        return RAGConfig()
 
     def get_pipeline_stats(self) -> dict:
         return {
@@ -32,6 +45,38 @@ class _StubPipeline:
             "hybrid_index": {"vector_store_count": 42},
             "conversation_manager": {"backend": "memory"},
         }
+
+    async def aquery(
+        self,
+        user_query: str,
+        conversation_id: str | None = None,
+        user_context: dict | None = None,
+        config_override=None,
+    ):
+        """Record the call and return a minimal well-shaped response."""
+        self.calls += 1
+        self.seen_config_overrides.append(config_override)
+        return SimpleNamespace(
+            answer="Stubbed answer.",
+            sources=[],
+            retrieval_result=SimpleNamespace(chunks=[], sources=[]),
+            llm_response=SimpleNamespace(total_tokens=0, cost_usd=0.0),
+            reformulated_query=None,
+            total_latency_ms=0.0,
+        )
+
+    def stream_query(
+        self,
+        user_query: str,
+        conversation_id: str | None = None,
+        user_context: dict | None = None,
+        config_override=None,
+    ):
+        """Record the call and yield one token."""
+        self.calls += 1
+        self.seen_config_overrides.append(config_override)
+        yield "stub "
+        yield "token"
 
 
 @pytest.fixture

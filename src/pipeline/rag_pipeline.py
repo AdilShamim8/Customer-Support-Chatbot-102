@@ -15,8 +15,9 @@ Flow:
 
 import json
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Iterator, Optional
+from typing import Any
 
 import structlog
 
@@ -32,14 +33,13 @@ from src.generation.llm_client import (
 from src.generation.prompt_engine import (
     PromptConfig,
     PromptEngine,
-    PromptStrategy,
 )
+from src.pipeline.conversation import ConversationManager
 from src.retrieval.retriever import (
-    Retriever,
     RetrievalConfig,
     RetrievalResult,
+    Retriever,
 )
-from src.pipeline.conversation import ConversationManager, Conversation
 
 logger = structlog.get_logger(__name__)
 
@@ -74,8 +74,8 @@ class RAGResponse:
     retrieval_result: RetrievalResult
     llm_response: LLMResponse
     query: str
-    reformulated_query: Optional[str] = None
-    hallucination_check: Optional[dict] = None
+    reformulated_query: str | None = None
+    hallucination_check: dict | None = None
     pipeline_metadata: dict[str, Any] = field(default_factory=dict)
     total_latency_ms: float = 0.0
 
@@ -113,10 +113,10 @@ class RAGPipeline:
 
     def __init__(
         self,
-        retriever: Optional[Retriever] = None,
-        llm_client: Optional[BaseLLMClient] = None,
-        conversation_manager: Optional[ConversationManager] = None,
-        config: Optional[RAGConfig] = None,
+        retriever: Retriever | None = None,
+        llm_client: BaseLLMClient | None = None,
+        conversation_manager: ConversationManager | None = None,
+        config: RAGConfig | None = None,
     ):
         self.retriever = retriever or Retriever()
         self.llm = llm_client or LLMClientFactory.create_default()
@@ -138,9 +138,9 @@ class RAGPipeline:
     def query(
         self,
         user_query: str,
-        conversation_id: Optional[str] = None,
-        user_context: Optional[dict] = None,
-        config_override: Optional[RAGConfig] = None,
+        conversation_id: str | None = None,
+        user_context: dict | None = None,
+        config_override: RAGConfig | None = None,
     ) -> RAGResponse:
         """
         Process a user query through the full RAG pipeline.
@@ -200,6 +200,7 @@ class RAGPipeline:
             retrieval_result=retrieval_result,
             conversation_history=history,
             user_context=user_context,
+            prompt_config=config.prompt_config,
         )
 
         # Step 5: LLM generation
@@ -276,11 +277,21 @@ class RAGPipeline:
     async def aquery(
         self,
         user_query: str,
-        conversation_id: Optional[str] = None,
-        user_context: Optional[dict] = None,
+        conversation_id: str | None = None,
+        user_context: dict | None = None,
+        config_override: RAGConfig | None = None,
     ) -> RAGResponse:
-        """Async version of query for FastAPI integration."""
+        """Async version of query for FastAPI integration.
+
+        Args:
+            user_query: The customer's question
+            conversation_id: Session ID for multi-turn conversations
+            user_context: User profile metadata
+            config_override: Per-request config (retrieval filters, prompt
+                strategy); None falls back to the deployment config
+        """
         pipeline_start = time.time()
+        config = config_override or self.config
 
         # Get history
         conversation = None
@@ -292,14 +303,14 @@ class RAGPipeline:
         # Reformulate
         retrieval_query = user_query
         reformulated_query = None
-        if self.config.reformulate_query and history:
+        if config.reformulate_query and history:
             reformulated_query = self._reformulate_query(user_query, history)
             retrieval_query = reformulated_query or user_query
 
         # Retrieve
         retrieval_result = self.retriever.retrieve(
             query=retrieval_query,
-            config=self.config.retrieval_config,
+            config=config.retrieval_config,
         )
 
         # Build prompt
@@ -308,19 +319,20 @@ class RAGPipeline:
             retrieval_result=retrieval_result,
             conversation_history=history,
             user_context=user_context,
+            prompt_config=config.prompt_config,
         )
 
         # Generate
         llm_request = LLMRequest(
             messages=messages,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
         )
         llm_response = await self.llm.acomplete(llm_request)
 
         # Format
         answer = llm_response.content
-        if self.config.enable_citations:
+        if config.enable_citations:
             answer = self._add_citation_footer(answer, retrieval_result.sources)
 
         # Save conversation
@@ -346,10 +358,20 @@ class RAGPipeline:
     def stream_query(
         self,
         user_query: str,
-        conversation_id: Optional[str] = None,
-        user_context: Optional[dict] = None,
+        conversation_id: str | None = None,
+        user_context: dict | None = None,
+        config_override: RAGConfig | None = None,
     ) -> Iterator[str]:
-        """Stream response tokens as they are generated."""
+        """Stream response tokens as they are generated.
+
+        Args:
+            user_query: The customer's question
+            conversation_id: Session ID for multi-turn conversations
+            user_context: User profile metadata
+            config_override: Per-request config (retrieval filters, prompt
+                strategy); None falls back to the deployment config
+        """
+        config = config_override or self.config
 
         conversation = None
         history = []
@@ -358,13 +380,13 @@ class RAGPipeline:
             history = conversation.get_messages()
 
         retrieval_query = user_query
-        if self.config.reformulate_query and history:
+        if config.reformulate_query and history:
             reformulated = self._reformulate_query(user_query, history)
             retrieval_query = reformulated or user_query
 
         retrieval_result = self.retriever.retrieve(
             query=retrieval_query,
-            config=self.config.retrieval_config,
+            config=config.retrieval_config,
         )
 
         messages = self.prompt_engine.build_rag_prompt(
@@ -372,12 +394,13 @@ class RAGPipeline:
             retrieval_result=retrieval_result,
             conversation_history=history,
             user_context=user_context,
+            prompt_config=config.prompt_config,
         )
 
         llm_request = LLMRequest(
             messages=messages,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
             stream=True,
         )
 
@@ -400,7 +423,7 @@ class RAGPipeline:
         self,
         query: str,
         history: list[Message],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Reformulate follow-up question as standalone for retrieval."""
         if not history:
             return None
@@ -438,7 +461,7 @@ class RAGPipeline:
         question: str,
         context: str,
         answer: str,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Check if answer is grounded in retrieved context."""
         messages = self.prompt_engine.build_hallucination_check_prompt(
             question=question,

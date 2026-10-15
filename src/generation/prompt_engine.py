@@ -10,11 +10,9 @@ Implements:
   - Context window management
 """
 
-import json
 from dataclasses import dataclass, field
 from enum import Enum
-from string import Template
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 import tiktoken
@@ -45,7 +43,7 @@ class FewShotExample:
     user_input: str
     context: str
     assistant_output: str
-    explanation: Optional[str] = None   # For CoT examples
+    explanation: str | None = None   # For CoT examples
 
     def to_messages(self, include_context: bool = True) -> list[Message]:
         if include_context and self.context:
@@ -238,7 +236,7 @@ Currency: {currency}
 
     "zero_shot_rag": """\
 You are a helpful customer support assistant. Answer the customer's question \
-using ONLY the information provided in the context below. 
+using ONLY the information provided in the context below.
 
 If the context does not contain enough information to answer the question, \
 say "I don't have enough information to answer that" and offer to connect \
@@ -251,7 +249,7 @@ Do not make up any information.
 You are a helpful customer support assistant. When answering questions:
 
 1. THINK: Analyze what the customer is asking
-2. SEARCH: Identify the relevant information from context  
+2. SEARCH: Identify the relevant information from context
 3. REASON: Consider what the best answer is
 4. RESPOND: Give a clear, structured answer
 
@@ -292,7 +290,7 @@ class PromptEngine:
     - RAG-specific: Context-grounded answering
     """
 
-    def __init__(self, config: Optional[PromptConfig] = None):
+    def __init__(self, config: PromptConfig | None = None):
         self.config = config or PromptConfig()
         self.token_counter = self._init_token_counter()
 
@@ -311,8 +309,9 @@ class PromptEngine:
         self,
         user_query: str,
         retrieval_result: RetrievalResult,
-        conversation_history: Optional[list[Message]] = None,
-        user_context: Optional[dict] = None,
+        conversation_history: list[Message] | None = None,
+        user_context: dict | None = None,
+        prompt_config: PromptConfig | None = None,
     ) -> list[Message]:
         """
         Build a complete RAG prompt with all configured strategies applied.
@@ -322,21 +321,25 @@ class PromptEngine:
             retrieval_result: Retrieved context from the RAG pipeline
             conversation_history: Prior conversation messages
             user_context: Optional user metadata (tier, history, etc.)
+            prompt_config: Per-call config override (strategy, persona,
+                few-shot counts); None falls back to the engine's config
 
         Returns:
             List of messages ready to send to the LLM
         """
+        config = prompt_config or self.config
         messages = []
 
         # Step 1: Build system prompt
-        system_prompt = self._build_system_prompt(user_context)
+        system_prompt = self._build_system_prompt(user_context, config=config)
         messages.append(Message(role=MessageRole.SYSTEM, content=system_prompt))
 
         # Step 2: Add few-shot examples (if configured)
-        if self.config.include_few_shot:
+        if config.include_few_shot:
             few_shot_messages = self._build_few_shot_messages(
                 user_query,
-                use_cot=self.config.include_cot,
+                use_cot=config.include_cot,
+                config=config,
             )
             messages.extend(few_shot_messages)
 
@@ -354,13 +357,14 @@ class PromptEngine:
             query=user_query,
             retrieval_result=retrieval_result,
             user_context=user_context,
+            config=config,
         )
         messages.append(Message(role=MessageRole.USER, content=user_message))
 
         total_tokens = self._count_messages_tokens(messages)
         logger.debug(
             "Prompt built",
-            strategy=self.config.strategy.value,
+            strategy=config.strategy.value,
             message_count=len(messages),
             total_tokens=total_tokens,
         )
@@ -370,12 +374,13 @@ class PromptEngine:
     # ── System Prompt Builder ─────────────────────────────────────────────────
 
     def _build_system_prompt(
-        self, user_context: Optional[dict] = None
+        self, user_context: dict | None = None, config: PromptConfig | None = None
     ) -> str:
         """Build a role-specific system prompt."""
         import datetime
 
-        strategy = self.config.strategy
+        config = config or self.config
+        strategy = config.strategy
         ctx = user_context or {}
 
         # Select base template
@@ -396,15 +401,15 @@ class PromptEngine:
 
         # Fill template variables
         variables = {
-            "company_name": self.config.company_name,
+            "company_name": config.company_name,
             "current_date": datetime.date.today().isoformat(),
-            "support_tier": ctx.get("support_tier", self.config.support_tier),
+            "support_tier": ctx.get("support_tier", config.support_tier),
             "user_technical_level": ctx.get(
-                "technical_level", self.config.user_technical_level
+                "technical_level", config.user_technical_level
             ),
-            "product_name": ctx.get("product_name", self.config.product_name),
-            "refund_window_days": self.config.refund_window_days,
-            "currency": self.config.currency,
+            "product_name": ctx.get("product_name", config.product_name),
+            "refund_window_days": config.refund_window_days,
+            "currency": config.currency,
         }
 
         # Safe substitution (won't raise on missing keys)
@@ -452,13 +457,15 @@ class PromptEngine:
         self,
         current_query: str,
         use_cot: bool = False,
+        config: PromptConfig | None = None,
     ) -> list[Message]:
         """
         Select and build few-shot demonstration messages.
         Selects the most relevant examples for the current query.
         """
+        config = config or self.config
         examples_pool = COT_EXAMPLES if use_cot else CUSTOMER_SUPPORT_EXAMPLES
-        n = min(self.config.num_few_shot_examples, len(examples_pool))
+        n = min(config.num_few_shot_examples, len(examples_pool))
 
         # Select most relevant examples (simple keyword matching)
         selected = self._select_relevant_examples(
@@ -504,16 +511,20 @@ class PromptEngine:
         self,
         query: str,
         retrieval_result: RetrievalResult,
-        user_context: Optional[dict] = None,
+        user_context: dict | None = None,
+        config: PromptConfig | None = None,
     ) -> str:
         """
         Build the final user message combining context and query.
         Manages token budget to fit within context window.
         """
-        strategy = self.config.strategy
+        config = config or self.config
+        strategy = config.strategy
 
         # Build context section
-        context_section = self._build_context_section(retrieval_result)
+        context_section = self._build_context_section(
+            retrieval_result, config=config
+        )
 
         # Build query section
         if strategy == PromptStrategy.CHAIN_OF_THOUGHT:
@@ -529,8 +540,11 @@ class PromptEngine:
 
         return message
 
-    def _build_context_section(self, retrieval_result: RetrievalResult) -> str:
+    def _build_context_section(
+        self, retrieval_result: RetrievalResult, config: PromptConfig | None = None
+    ) -> str:
         """Build the context section with token budget management."""
+        config = config or self.config
         if not retrieval_result.chunks:
             return (
                 "**Context:** No relevant documentation found. "
@@ -541,7 +555,7 @@ class PromptEngine:
         header_tokens = 50
         query_tokens = 200
         reserved = header_tokens + query_tokens + 200  # Buffer
-        available_tokens = self.config.max_context_tokens - reserved
+        available_tokens = config.max_context_tokens - reserved
 
         context_parts = ["## Relevant Documentation\n"]
         used_tokens = self.count_tokens(context_parts[0])
@@ -578,7 +592,7 @@ class PromptEngine:
     def _build_standard_query(
         self,
         query: str,
-        user_context: Optional[dict] = None,
+        user_context: dict | None = None,
     ) -> str:
         """Build a standard query section."""
         parts = ["## Customer Question"]
@@ -624,7 +638,7 @@ class PromptEngine:
         Keeps most recent messages, always preserves system context.
         """
         available = max_history_tokens
-        trimmed = []
+        trimmed: list[Message] = []
 
         # Work backwards through history
         for message in reversed(history):

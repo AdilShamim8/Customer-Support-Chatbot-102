@@ -3,7 +3,8 @@ Chat API routes - main customer support interaction endpoints.
 """
 
 import uuid
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+from dataclasses import replace
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -15,9 +16,8 @@ from src.api.schemas import (
     FeedbackRequest,
     SourceReference,
 )
-from src.generation.prompt_engine import PromptConfig, PromptStrategy
-from src.pipeline.rag_pipeline import RAGConfig, RAGPipeline
-from src.retrieval.retriever import RetrievalConfig
+from src.generation.prompt_engine import PromptStrategy
+from src.pipeline.rag_pipeline import RAGPipeline
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -41,18 +41,25 @@ async def chat(
     request_body: ChatRequest,
     background_tasks: BackgroundTasks,
     pipeline: RAGPipeline = Depends(get_pipeline),
-) -> ChatResponse:
+) -> ChatResponse | StreamingResponse:
     """Process a customer support message."""
 
     # Generate conversation ID if not provided
     conversation_id = request_body.conversation_id or str(uuid.uuid4())
 
-    # Build pipeline config from request
-    rag_config = RAGConfig(
-        retrieval_config=RetrievalConfig(
-            filters=request_body.filters,
+    # Merge the caller's per-request choices onto the pipeline's live
+    # config: a request may narrow retrieval with filters or switch the
+    # prompt strategy WITHOUT discarding the deployment's tuned defaults
+    # (top_k, thresholds, company persona, few-shot counts, temperature).
+    # The config is passed to the pipeline as config_override below.
+    rag_config = replace(
+        pipeline.config,
+        retrieval_config=replace(
+            pipeline.config.retrieval_config,
+            filters=request_body.filters or {},
         ),
-        prompt_config=PromptConfig(
+        prompt_config=replace(
+            pipeline.config.prompt_config,
             strategy=PromptStrategy(request_body.prompt_strategy.value),
             include_few_shot=True,
             user_metadata=(
@@ -79,6 +86,7 @@ async def chat(
                         user_query=request_body.message,
                         conversation_id=conversation_id,
                         user_context=user_context,
+                        config_override=rag_config,
                     ):
                         yield f"data: {token}\n\n"
                     yield "data: [DONE]\n\n"
@@ -100,6 +108,7 @@ async def chat(
             user_query=request_body.message,
             conversation_id=conversation_id,
             user_context=user_context,
+            config_override=rag_config,
         )
 
         # Compute confidence from retrieval scores
@@ -142,7 +151,7 @@ async def chat(
         raise HTTPException(
             status_code=500,
             detail=f"Internal error processing your request: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
