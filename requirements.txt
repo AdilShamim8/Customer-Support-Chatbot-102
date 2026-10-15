@@ -86,3 +86,6 @@ numpy>=1.26.4
 pandas>=2.2.1
 tqdm>=4.66.2
 rich>=13.7.1
+# Direct import in tests/unit/test_manifest_integrity.py - declared
+# explicitly rather than relying on transitive availability
+PyYAML>=6.0.1
