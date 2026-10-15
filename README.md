@@ -1181,21 +1181,35 @@ curl http://localhost:8000/metrics
 
 ## 📊 Evaluation
 
+### Golden Sets (the release gate's data)
+
+Three versioned datasets in `data/eval/` power the quality gate
+([ADR-0007](docs/architecture/adr/0007-evaluation-release-gate.md)):
+
+| Set | Cases | Purpose |
+|-----|-------|---------|
+| `golden_faq.jsonl` | 10 | Factual floor - single-document answers |
+| `golden_multihop.jsonl` | 7 | Cross-document reasoning |
+| `golden_adversarial.jsonl` | 10 | Injection, unanswerable, ambiguous - the refusal contract |
+
 ### Running Evaluation
 
 ```bash
-# CLI evaluation against test dataset
-python scripts/evaluate_pipeline.py \
-    --dataset ./data/eval/test_set.jsonl \
-    --output ./data/eval/report.json \
-    --max-samples 100
-
-# Without LLM metrics (fast, no API calls)
-python scripts/evaluate_pipeline.py \
-    --no-llm-metrics
-
-# Via Makefile
+# Full suite across all golden sets
 make evaluate
+
+# CI gate mode: nonzero exit on threshold breach
+make eval-gate
+
+# Direct CLI with explicit datasets (accumulates multiple --dataset flags)
+python scripts/evaluate_pipeline.py \
+    --dataset ./data/eval/golden_faq.jsonl \
+    --dataset ./data/eval/golden_adversarial.jsonl \
+    --output ./data/eval/report.json \
+    --gate
+
+# Without LLM metrics (fast, no API calls - CI deterministic mode)
+python scripts/evaluate_pipeline.py --no-llm-metrics
 ```
 
 ### Test Dataset Format (`test_set.jsonl`)
@@ -1269,21 +1283,30 @@ Low Context Recall?
 
 ## 📈 Monitoring
 
-### Grafana Dashboard
+### Grafana Dashboards
 
 ```bash
 open http://localhost:3000
 # Login: admin / admin (change in production via GRAFANA_PASSWORD)
 ```
 
-**Panels included:**
-- Request rate (req/s)
-- P50 / P95 / P99 latency
-- Error rate
-- LLM token usage over time
-- Retrieval score distribution
-- Active conversations
-- Cost per hour
+**Operational dashboard** (`chatbot_dashboard.json`):
+- Request rate (req/s) · P50/P95/P99 latency · error rate
+- LLM token usage over time · cost per hour
+- Retrieval score distribution · active conversations
+
+**Answer-quality dashboard** (`rag_quality_dashboard.json`):
+- Faithfulness / context relevance / correctness vs SLO thresholds
+- Refusal rate (target band 5-15%)
+- Semantic cache hit rate (the cost lever)
+- Token cost per 1k answers · fallback answer rate
+
+### Alerting (`monitoring/alerts.yml`)
+
+Alerts fire on **symptoms users feel** with runbook links in every
+annotation: SLO fast/slow burn, p95 latency, LLM provider errors,
+index health, crash loops, HPA ceiling, memory saturation. Weekly
+pip-audit + CodeQL cover the security side (see `.github/workflows/`).
 
 ### Key Prometheus Metrics
 
@@ -1417,7 +1440,28 @@ make test-integration
 # E2E tests (requires running app)
 make up
 pytest tests/e2e/ --base-url http://localhost:8000 -v
+
+# Load tests (capacity model verification)
+make load-test TARGET_RPS=2000 DURATION=10m
 ```
+
+### The Test Inventory
+
+| Tier | What it pins |
+|------|--------------|
+| `unit/test_exceptions.py` | Error codes, retryability, status mapping |
+| `unit/test_settings.py` | CORS policy, hardening defaults, env overrides |
+| `unit/test_version.py` | Version single-source (greps for hardcodes) |
+| `unit/test_schemas.py` | Wire-contract validation |
+| `unit/test_auth.py` | Key hashing, RBAC hierarchy, 401s without leaks |
+| `unit/test_rate_limiter.py` | Client identity, fail-open, probe bypass |
+| `unit/test_prompt_engine.py` | Injection containment, token budgets |
+| `unit/test_golden_sets.py` | Eval data integrity (schema, uniqueness, safety floor) |
+| `unit/test_env_contract.py` | `.env.example` ↔ Settings field parity |
+| `unit/test_manifest_integrity.py` | K8s/workflow YAML contracts |
+| `integration/test_health.py` | Probe contracts (live vs ready semantics) |
+| `integration/test_chat.py` | Route validation + RFC 7807 envelope |
+| `integration/test_admin.py` | Upload validation, auth posture |
 
 ### Test Coverage
 
