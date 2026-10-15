@@ -58,6 +58,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   enforcement), .git-blame-ignore-revs, SECURITY_INSIGHTS.yml
 - Community files: SECURITY.md, SUPPORT.md, CODE_OF_CONDUCT.md,
   PR/issue templates, CODEOWNERS, path-based PR auto-labeling
+- `make verify` coherence gate: one command that must be green before
+  every PR - the local mirror of CI's unit + integrity contracts
+- Import-isolation contract test: core parsing/indexing imports must
+  survive without optional heavy backends (subprocess import blocker)
+- Per-request config contract tests: filters and prompt_strategy must
+  actually reach the pipeline, and the merge must preserve the
+  deployment's tuned defaults
 
 ### Changed
 - Version single-source-of-truth in `src/__version__.py` (v1.1.0);
@@ -93,6 +100,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI integration tests used `--timeout` without installing pytest-timeout
 - Stale 2024 example timestamps across README and Tutorial refreshed to
   the 2026-10-15 cycle
+- CI was red on three jobs (lint, type check, unit tests):
+  - pytest now resolves `src`/`configs` via `pythonpath` in pyproject
+    (bare pytest - as CI and the Makefile invoke it - never put the repo
+    root on sys.path; every src-importing test failed collection)
+  - ruff backlog cleared: 682 violations -> 0 (653 autofixes plus
+    targeted residue: justified noqas for md5 cache keys, pickle on
+    self-written snapshots, Prometheus token labels; FlashRank cache
+    moved under tempfile.gettempdir(); per-file ignores scoped for
+    tests, load profiles and the evaluator's console report)
+  - mypy backlog cleared: 29 errors -> 0 across 11 files (container
+    annotations, tenacity override typing, async-generator astream
+    declaration in BaseLLMClient, RAFT record types)
+- Chat route built a RAGConfig from the request and dropped it on the
+  floor: `filters` and `prompt_strategy` were accepted by the API
+  schema but never reached the pipeline. aquery/stream_query now take
+  config_override, the route merges per-request choices onto the
+  pipeline's live config (deployment-tuned defaults preserved), and
+  build_rag_prompt honors a per-call PromptConfig
+- Chunker could filter a document into ZERO chunks (silent index data
+  loss): the short-chunk floor is now capped at chunk_size minus
+  overlap, single-chunk documents are always kept, and filtering can
+  never return empty; chunk_overlap >= chunk_size now fails fast
+- Heavy format backends (pdfplumber, bs4, python-docx, unstructured)
+  imported at module top level broke the entire parsing/indexing
+  import chain when absent - now imported lazily inside the parser
+  methods that use them (also cuts pod cold-start memory)
 
 ## [1.0.0] - 2026-06-04
 
