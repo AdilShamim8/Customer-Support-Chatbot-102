@@ -8,14 +8,14 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 import structlog
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from configs.logging_config import setup_logging
 from configs.settings import settings
 from src import __version__
+from src.api.errors import register_error_handlers
 from src.api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
 from src.api.routes import chat, admin, health
 from src.generation.llm_client import LLMClientFactory
@@ -180,24 +180,10 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
 
-    # ── Global Exception Handler ───────────────────────────────────────────────
-    @app.exception_handler(Exception)
-    async def global_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
-        logger.error(
-            "Unhandled exception",
-            path=request.url.path,
-            error=str(exc),
-            exc_info=True,
-        )
-        return JSONResponse(
-            status_code=500,
-            content={
-                "detail": "An internal error occurred",
-                "error": str(exc) if settings.is_development else "Internal Server Error",
-            },
-        )
+    # ── Error Envelope (RFC 7807 + core exception hierarchy, ADR-0004) ──────
+    # Replaces the inline handler: unifies translation of every
+    # ChatbotError subclass into problem+json with retryability.
+    register_error_handlers(app)
 
     return app
 
