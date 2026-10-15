@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/AdilShamim8/Customer-Support-Chatbot-102/discussions
+    about: Ask the community for help with setup, architecture, or usage
+  - name: Report a security vulnerability
+    url: https://github.com/AdilShamim8/Customer-Support-Chatbot-102/security/advisories/new
+    about: Please report vulnerabilities privately via Security Advisories
+  - name: Live demo
+    url: https://ragchatbot1.space-z.ai/
+    about: Interactive visualization of the deployed system
