@@ -91,6 +91,47 @@ class Settings(BaseSettings):
     max_conversation_turns: int = 20
     conversation_ttl_seconds: int = 3600  # 1 hour
 
+    # ── Production hardening (added 2026-10-15) ─────────────────────────────
+    # Observability
+    sentry_dsn: Optional[str] = None
+    tracing_enabled: bool = True
+    metrics_enabled: bool = True
+
+    # Serving
+    request_timeout_seconds: float = 30.0
+    stream_first_token_timeout_seconds: float = 10.0
+    max_request_body_bytes: int = 262144  # 256 KiB
+
+    # CORS (comma-separated; "*" only permitted in development)
+    cors_origins: str = ""
+
+    # Resilience
+    llm_max_retries: int = 3
+    llm_timeout_seconds: float = 60.0
+    retrieval_timeout_seconds: float = 5.0
+    circuit_breaker_failure_threshold: int = 5
+    circuit_breaker_reset_seconds: int = 30
+
+    # Caching
+    semantic_cache_enabled: bool = False
+    semantic_cache_ttl_seconds: int = 21600  # 6 hours
+    semantic_cache_similarity_threshold: float = 0.95
+
+    # Degradation switches (kill-switch pattern)
+    enable_citations: bool = True
+    enable_reranking: bool = True
+    fallback_message: str = (
+        "I'm having trouble connecting to my knowledge systems right now. "
+        "A human agent will follow up shortly - or try rephrasing in a moment."
+    )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Parsed CORS origins; empty list means 'default policy'."""
+        if self.cors_origins:
+            return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return ["https://ragchatbot1.space-z.ai"] if self.is_production else ["*"]
+
     @field_validator("openai_api_key")
     @classmethod
     def validate_openai_key(cls, v, values):
