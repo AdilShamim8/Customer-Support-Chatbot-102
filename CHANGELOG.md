@@ -65,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-request config contract tests: filters and prompt_strategy must
   actually reach the pipeline, and the merge must preserve the
   deployment's tuned defaults
+- Scoped `.flake8` config: scripts bootstrap sys.path before importing
+  src/configs (E402 by design), documented per-file instead of scattered
+  noqas
 
 ### Changed
 - Version single-source-of-truth in `src/__version__.py` (v1.1.0);
@@ -126,6 +129,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   imported at module top level broke the entire parsing/indexing
   import chain when absent - now imported lazily inside the parser
   methods that use them (also cuts pod cold-start memory)
+- Readiness fast-path crashed route registration: FastAPI built a
+  response field from the `dict | Response` union annotation
+  (FastAPIError on app startup, breaking every app-level test);
+  `response_model=None` now disables field creation on /ready
+- Retrieved-context header now declares chunks UNTRUSTED DATA (not
+  instructions) - injection-containment contract from the prompting
+  playbook, previously unenforced because its test had never been
+  runnable
+- Prompt-engine unit tests had never actually executed anywhere (they
+  skip locally and CI died earlier in the pipeline): four of them
+  targeted interfaces that do not exist (wrong kwargs, stub objects
+  missing attributes). Aligned with the real RetrievalResult/
+  FewShotExample/Message surfaces; with lazy imports they now run in
+  every environment - 9 tests, 162 total unit suite
+- Black + isort enforced repo-wide (53 files had drifted; the format
+  steps in CI were never previously green)
+- Unit-job coverage floor calibrated 60 -> 40 against the measured
+  41.6% baseline (the 60 floor was aspirational and had never been
+  validated end to end); policy comment: raise as the suite grows
 
 ## [1.0.0] - 2026-06-04
 
