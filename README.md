@@ -124,6 +124,18 @@ This system solves all three:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+Every architectural decision above (and six more) has a full ADR with
+the alternatives we considered and rejected:
+
+| Decision | ADR |
+|----------|-----|
+| Hybrid retrieval + RRF fusion | [ADR-0002](docs/architecture/adr/0002-hybrid-retrieval-rrf.md) |
+| Cross-encoder reranking (kill-switchable) | [ADR-0003](docs/architecture/adr/0003-cross-encoder-reranking.md) |
+| Typed exception hierarchy | [ADR-0004](docs/architecture/adr/0004-typed-exceptions.md) |
+| SSE streaming transport | [ADR-0005](docs/architecture/adr/0005-sse-streaming.md) |
+| Three-tier rate limiting | [ADR-0006](docs/architecture/adr/0006-three-tier-rate-limiting.md) |
+| Evaluation as a release gate | [ADR-0007](docs/architecture/adr/0007-evaluation-release-gate.md) |
+
 ---
 
 ## ✨ Features
