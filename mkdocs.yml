@@ -1,0 +1,67 @@
+site_name: Customer Support Chatbot (RAG)
+site_description: Production-grade RAG customer support system - architecture, operations, and engineering guides
+site_url: https://github.com/AdilShamim8/Customer-Support-Chatbot-102
+repo_name: AdilShamim8/Customer-Support-Chatbot-102
+repo_url: https://github.com/AdilShamim8/Customer-Support-Chatbot-102
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Architecture:
+      - System Overview: architecture/system-overview.md
+      - Scaling to 100M+: architecture/scaling-100m-users.md
+      - Failure Modes: architecture/failure-modes.md
+      - Capacity Planning: architecture/capacity-planning.md
+      - ADRs:
+          - 0001 Record Decisions: architecture/adr/0001-record-architecture-decisions.md
+          - 0002 Hybrid Retrieval: architecture/adr/0002-hybrid-retrieval-rrf.md
+          - 0003 Reranking: architecture/adr/0003-cross-encoder-reranking.md
+          - 0004 Typed Exceptions: architecture/adr/0004-typed-exceptions.md
+          - 0005 SSE Streaming: architecture/adr/0005-sse-streaming.md
+          - 0006 Rate Limiting: architecture/adr/0006-three-tier-rate-limiting.md
+          - 0007 Eval Gates: architecture/adr/0007-evaluation-release-gate.md
+  - Operations:
+      - SLOs: operations/slo.md
+      - Monitoring: operations/monitoring.md
+      - Runbooks:
+          - Incident Response: runbooks/incident-response.md
+          - Deployment: runbooks/deployment.md
+          - Rollback: runbooks/rollback.md
+          - Index Rebuild: runbooks/vector-index-rebuild.md
+  - Engineering:
+      - Prompting Playbook: prompting/playbook.md
+      - Evaluation Metrics: evaluation/metrics.md
+      - Getting Started: development/getting-started.md
+  - Security:
+      - Threat Model: security/threat-model.md
