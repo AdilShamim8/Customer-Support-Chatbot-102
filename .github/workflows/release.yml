@@ -1,0 +1,67 @@
+# Release Automation - tag a version, get a GitHub Release
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Verify version matches source of truth
+        run: |
+          PKG_VERSION=$(python -c "import re; m = re.search(r'version = \"(.+?)\"', open('pyproject.toml').read()); print(m.group(1))")
+          TAG_VERSION=${{ steps.version.outputs.VERSION }}
+          if [ "v${PKG_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "::error::Tag ${TAG_VERSION} does not match pyproject.toml version ${PKG_VERSION}"
+            exit 1
+          fi
+          echo "Version check passed: ${TAG_VERSION}"
+
+      - name: Extract changelog section for this version
+        id: changelog
+        run: |
+          VERSION_NO_V=${GITHUB_REF#refs/tags/v}
+          # Extract the section for this version from CHANGELOG.md
+          python - <<'EOF'
+          import re, sys
+          version = "${VERSION_NO_V}"
+          text = open("CHANGELOG.md").read()
+          match = re.search(
+              rf"## \[{re.escape(version)}\].*?(?=\n## \[|\Z)",
+              text, re.S)
+          if match:
+              open("/tmp/release_notes.md", "w").write(match.group(0).strip())
+          else:
+              open("/tmp/release_notes.md", "w").write(f"Release {version}")
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: /tmp/release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, '-') }}
+          generate_release_notes: true
+
+      - name: Log release summary
+        run: |
+          echo "Release ${{ steps.version.outputs.VERSION }} published."
+          echo "Next steps: deploy via runbooks/deployment.md"
