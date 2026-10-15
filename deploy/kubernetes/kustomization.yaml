@@ -21,6 +21,7 @@ resources:
   - pdb.yaml
   - networkpolicy.yaml
   - redis.yaml
+  - servicemonitor.yaml
   - postgres.yaml
 
 images:
