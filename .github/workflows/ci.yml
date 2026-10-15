@@ -1,0 +1,172 @@
+# Main CI Pipeline - every push and pull request
+# Quality gates: lint -> typecheck -> unit tests -> integration tests -> build
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.8.3"
+
+jobs:
+  # ── Stage 1: fast static checks (fail in <60s) ─────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: pip install ruff==0.4.10 black==24.4.2 isort==5.13.2 flake8==7.1.0
+
+      - name: Ruff (fast static analysis)
+        run: ruff check src/ configs/ scripts/ tests/
+
+      - name: Black (formatting)
+        run: black --check --line-length=100 src/ configs/ scripts/ tests/
+
+      - name: isort (import order)
+        run: isort --check-only --profile=black --line-length=100 src/ configs/ scripts/ tests/
+
+      - name: Flake8 (style + complexity)
+        run: flake8 src/ configs/ scripts/ tests/ --max-line-length=100 --extend-ignore=E203
+
+  typecheck:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install mypy and stubs
+        run: pip install mypy==1.10.0 types-requests types-redis
+
+      - name: Run mypy
+        run: mypy src/ configs/ --ignore-missing-imports --no-strict-optional
+
+  # ── Stage 2: tests with matrix ─────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run unit tests
+        env:
+          APP_ENV: test
+          OPENAI_API_KEY: sk-test-dummy
+        run: |
+          pytest tests/unit/ -v \
+            --cov=src \
+            --cov=configs \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=60
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage.xml
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [unit-tests]
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run integration tests
+        env:
+          APP_ENV: test
+          REDIS_URL: redis://localhost:6379/0
+          OPENAI_API_KEY: sk-test-dummy
+        run: pytest tests/integration/ -v --timeout=300
+
+  # ── Stage 3: verify the application even boots ────────────────────────────
+  smoke-build:
+    name: Smoke (app imports cleanly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Verify app factory and module graph
+        env:
+          APP_ENV: test
+          OPENAI_API_KEY: sk-test-dummy
+        run: |
+          python -c "from src.api.main import create_app; app = create_app(); print('App factory OK:', app.title)"
+          python -c "import src; print('Package version:', src.__version__)"
+          python -c "from configs.settings import get_settings; s = get_settings(); print('Settings OK:', s.app_env)"
+
+  # ── Stage 4: final gate ────────────────────────────────────────────────────
+  ci-passed:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit-tests, integration-tests, smoke-build]
+    if: always()
+    steps:
+      - name: Fail if any dependency failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
+      - name: Green
+        run: echo "All CI gates passed."
