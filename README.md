@@ -51,9 +51,12 @@
 - [Evaluation](#-evaluation)
 - [Monitoring](#-monitoring)
 - [Deployment](#-deployment)
+- [Production Deployment](#-production-deployment)
+- [Operations & SLOs](#%EF%B8%8F-operations--slos)
 - [Testing](#-testing)
 - [Performance](#-performance)
 - [Troubleshooting](#-troubleshooting)
+- [Documentation](#-documentation)
 - [Contributing](#-contributing)
 - [License](#-license)
 
