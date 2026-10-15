@@ -2731,7 +2731,7 @@ TIER 2 — INCLUDE WHEN RELEVANT:
 
 TIER 3 — INCLUDE FOR COMPLEX CASES:
   Product Information:
-    - "Registered Products: TechPro X3 (S/N: TXP-2024-789)"
+    - "Registered Products: TechPro X3 (S/N: TXP-2026-789)"
     - "Warranty Status: 2-year warranty, purchased 8 months ago"
     - "Active warranty claims: None"
   
@@ -2767,14 +2767,14 @@ When Sarah sends "Is my laptop still covered by warranty?":
 │                                                             │
 │  Recent Orders:                                             │
 │  • Order #45231: TechPro X3 Laptop                         │
-│    Status: Delivered 8 months ago (2024-01-15)             │
+│    Status: Delivered 8 months ago (2026-02-15)             │
 │    Purchase Price: $1,299                                   │
 │                                                             │
 │  Registered Products:                                       │
-│  • TechPro X3 (S/N: TXP-2024-789)                         │
+│  • TechPro X3 (S/N: TXP-2026-789)                         │
 │    Warranty: 2-year hardware warranty                       │
-│    Warranty Start: 2024-01-15                               │
-│    Warranty End: 2026-01-15                                 │
+│    Warranty Start: 2026-02-15                               │
+│    Warranty End: 2027-02-15                                 │
 │    Status: ACTIVE                                           │
 │                                                             │
 │  [RETRIEVED CONTEXT - RAG (comes from vector database)]     │
@@ -3086,7 +3086,7 @@ WITHOUT RAG (doctor from memory):
 WITH RAG (doctor with the drug reference book):
   Patient: "What's the dose for this drug?"
   Doctor opens reference book, finds exact page, reads it.
-  Doctor: "According to the 2024 drug handbook, page 347:
+  Doctor: "According to the 2026 drug handbook, page 347:
            The standard dose is 250mg three times daily 
            with food. For patients with kidney issues, 
            reduce to 125mg."
@@ -3292,8 +3292,8 @@ RAW HTML (what the computer stores):
     <li>Original packaging required</li>
     <li>Receipt must be present</li>
   </ul>
-  <!-- Internal note: Updated Jan 2024 -->
-  <footer>© TechStore 2024 | Page 1</footer>
+  <!-- Internal note: Updated Jan 2026 -->
+  <footer>© TechStore 2026 | Page 1</footer>
 </body>
 </html>
 
@@ -4530,7 +4530,7 @@ RESULT:
 THE PROBLEM WITH VECTOR-ONLY SEARCH:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Query: "TechPro X3 Pro 2024 model charger compatibility"
+Query: "TechPro X3 Pro 2026 model charger compatibility"
 
 Vector search understands MEANING but may:
   → Return results about "laptop chargers" in general
@@ -4538,7 +4538,7 @@ Vector search understands MEANING but may:
   → Miss exact model number matches
 
 BM25 keyword search EXCELS at:
-  → Finding exact product codes: "TechPro X3 Pro 2024"
+  → Finding exact product codes: "TechPro X3 Pro 2026"
   → Finding specific model numbers, SKUs, order IDs
   → Finding exact phrase matches
 
@@ -4684,7 +4684,7 @@ CRITICAL INSTRUCTIONS:
 
 [SECTION 3: RETRIEVED CONTEXT]
 ═══════════════════ CONTEXT START ═══════════════════
-[SOURCE: warranty_guide.pdf | Section: Hardware Coverage | Updated: Jan 2024]
+[SOURCE: warranty_guide.pdf | Section: Hardware Coverage | Updated: Jan 2026]
 TechStore's 2-year hardware warranty covers all manufacturing
 defects. Coverage includes: screen defects, battery failures,
 charging port issues, and keyboard problems. Physical damage,
@@ -4692,7 +4692,7 @@ water damage, and damage from unauthorized modifications are
 NOT covered. Claims must be filed within 30 days of discovering
 the defect.
 
-[SOURCE: return_policy.pdf | Section: Standard Returns | Updated: Jan 2024]
+[SOURCE: return_policy.pdf | Section: Standard Returns | Updated: Jan 2026]
 Standard return window: 30 days from purchase date.
 Items must be in original packaging with receipt.
 Defective items: 90-day return window regardless of condition.
