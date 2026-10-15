@@ -8,10 +8,9 @@ This page is the orientation layer. Last reviewed: 2026-10-15.
 
 | Endpoint | Method | Auth | Purpose |
 |----------|--------|------|---------|
-| `/api/v1/chat` | POST | user | Ask a question (JSON response) |
-| `/api/v1/chat/stream` | POST | user | Ask a question (SSE token stream) |
+| `/api/v1/chat` | POST | user | Ask a question (JSON response; SSE when `"stream": true`) |
 | `/api/v1/chat/{id}` | DELETE | user | End a conversation session |
-| `/api/v1/feedback` | POST | user | Rate an answer (drives evaluation + RAFT) |
+| `/api/v1/chat/feedback` | POST | user | Rate an answer (drives evaluation + RAFT) |
 | `/api/v1/admin/documents/upload` | POST | admin | Ingest a document |
 | `/api/v1/admin/evaluate` | POST | admin | Trigger evaluation run |
 | `/api/v1/admin/stats` | GET | admin | Pipeline + usage statistics |
@@ -35,16 +34,26 @@ This page is the orientation layer. Last reviewed: 2026-10-15.
 
 ## Streaming Contract (SSE)
 
+Streaming is a mode of the SAME endpoint, selected per request:
+
 ```
-POST /api/v1/chat/stream
+POST /api/v1/chat
+Content-Type: application/json
 Accept: text/event-stream
 
-data: {"token": "Our "}
-data: {"token": "return "}
-...
+{"message": "What is your return policy?", "stream": true}
+```
+
+Event shapes (raw text tokens, one per event):
+
+```
+data: Our 
+data: return 
+data: policy ...
 data: [DONE]
 ```
 
-First token target: p95 < 1s (SLO). Errors mid-stream arrive as a final
-`data: {"error": {...}}` event before the stream closes - clients must
-handle both shapes.
+First token target: p95 < 1s (SLO). A mid-stream failure emits a final
+`data: [ERROR] <message>` event before the stream closes - clients must
+handle `[DONE]` and `[ERROR]` shapes. The response carries
+`X-Conversation-ID` so multi-turn follow-ups can continue the session.
