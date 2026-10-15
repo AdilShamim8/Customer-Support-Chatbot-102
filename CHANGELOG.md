@@ -163,6 +163,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API quick reference corrected: feedback endpoint is
   `/api/v1/chat/feedback`; SSE contract rewritten to the implemented
   event shapes (raw-text tokens, [DONE], [ERROR])
+- Docker workflow failed on its first run: the Trivy scan step
+  referenced `ghcr.io/<Owner>/<Repo>:sha-<full 40-char SHA>` (raw
+  mixed-case repository name, full SHA) while the build step pushes
+  the metadata-action tags (lowercased, 7-char short SHA) - the scan
+  pointed at a tag that does not exist in the registry and aborted
+  with "unable to initialize container image". A resolve step now
+  rebuilds the reference with the same recipe the metadata action
+  uses (`SCAN_REF=${REGISTRY}/${IMAGE_NAME,,}:sha-${GITHUB_SHA::7}`),
+  and the scan carries the same non-PR guard as the push
 
 ## [1.0.0] - 2026-06-04
 
