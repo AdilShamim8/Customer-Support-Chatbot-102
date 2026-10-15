@@ -1,0 +1,48 @@
+# Staging overlay - same shape as production, smaller numbers.
+#   kubectl apply -k deploy/kubernetes/overlays/staging
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: chatbot
+
+resources:
+  - ../../
+
+labels:
+  - pairs:
+      environment: staging
+
+patches:
+  # Smaller fleet, faster experimentation
+  - target:
+      kind: Deployment
+      name: chatbot-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: chatbot-api
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+  # Staging can sacrifice availability for iteration speed
+  - target:
+      kind: Deployment
+      name: chatbot-api
+    patch: |
+      - op: replace
+        path: /spec/strategy/rollingUpdate/maxUnavailable
+        value: 1
+  - target:
+      kind: PodDisruptionBudget
+      name: chatbot-api
+    patch: |
+      - op: replace
+        path: /spec/minAvailable
+        value: 1
