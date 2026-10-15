@@ -43,7 +43,6 @@ data:
 
   # Storage endpoints (in-cluster DNS)
   REDIS_URL: "redis://redis-master.chatbot.svc.cluster.local:6379/0"
-  DATABASE_URL: "postgresql+asyncpg://chatbot:REPLACED_BY_SECRET@postgres.chatbot.svc.cluster.local:5432/chatbot_db"
   ELASTICSEARCH_URL: "http://elasticsearch.chatbot.svc.cluster.local:9200"
 
   # Vector store
