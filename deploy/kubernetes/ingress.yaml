@@ -1,0 +1,41 @@
+# Ingress - TLS termination, SSE-safe timeouts, and edge rate limiting.
+#
+# SSE (streaming answers) holds connections for the full generation time:
+# proxy-read/send timeouts MUST exceed the app's 30s request timeout with
+# margin, and buffering MUST be off or the stream stalls (classic
+# "streaming works locally, dies behind nginx" failure).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chatbot-api
+  namespace: chatbot
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    # SSE: disable response buffering or tokens never reach the client
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    # Edge rate limiting (defense in depth with app-level limiter)
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+    nginx.ingress.kubernetes.io/limit-rpm: "600"
+    # HSTS for API clients that hold session tokens
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.ragchatbot.example.com
+      secretName: chatbot-api-tls
+  rules:
+    - host: api.ragchatbot.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: chatbot-api
+                port:
+                  number: 80
