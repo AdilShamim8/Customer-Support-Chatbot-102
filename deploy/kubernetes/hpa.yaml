@@ -1,0 +1,54 @@
+# Horizontal Pod Autoscaler - the primary scale lever for 100M+ MAU.
+#
+# Scaling signals, in priority order (why not just CPU):
+# 1. CPU at 65% target - LLM calls are I/O-bound; CPU spikes on tokenizers
+#    and rerankers during traffic bursts.
+# 2. Custom metric `http_requests_per_second` - reacts before CPU saturates.
+#
+# At steady 100M MAU (~29k requests/sec peak), with p50 latency ~800ms and
+# ~40 concurrent requests per pod, the fleet needs roughly 700-900 pods;
+# autoscaling policy scales in minutes, not hours - see
+# docs/architecture/capacity-planning.md for the full model.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: chatbot-api
+  namespace: chatbot
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: chatbot-api
+  minReplicas: 6          # floor keeps headroom for a zone loss at baseline
+  maxReplicas: 1000       # ceiling bounded by provider quotas + cost alerts
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "40"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100           # double the fleet fast on viral spikes
+          periodSeconds: 30
+        - type: Pods
+          value: 50
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 5 min: avoid flapping on bursty chat
+      policies:
+        - type: Percent
+          value: 20           # shed slowly - conversation affinity matters
+          periodSeconds: 60
