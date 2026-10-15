@@ -154,16 +154,29 @@ This system solves all three:
 
 ### 🚀 Production Infrastructure
 - **FastAPI** with async endpoints, SSE streaming, and OpenAPI docs
+- **Gunicorn + uvicorn workers** with SSE-aware graceful drain (`gunicorn.conf.py`)
 - **Redis** for conversation state persistence (with in-memory fallback)
 - **PostgreSQL** for conversation history, feedback, and document registry
-- **Docker Compose** with 7 services (app, Redis, ChromaDB, 
-  Elasticsearch, PostgreSQL, Prometheus, Grafana)
-- **Prometheus metrics** + **Grafana dashboards**
-- **Kubernetes-ready** liveness and readiness probes
-- **GitHub Actions CI/CD** with lint, test, and Docker build stages
+- **Docker Compose** dev stack + production-shaped compose (`docker-compose.prod.yml`)
+- **Kubernetes deployment stack**: Deployment, HPA (6→1000 pods), PDB,
+  zero-trust NetworkPolicy, Ingress with SSE-safe timeouts, Kustomize
+  overlays for staging/production (`deploy/kubernetes/`)
+- **Terraform** infrastructure-as-code: VPC (3 AZ), EKS, ElastiCache,
+  RDS with HA + PITR, Secrets Manager (`deploy/terraform/`)
+- **Nginx edge** with three-tier rate limiting and JSON access logs
+- **Prometheus metrics** + alert rules (SLO burn rates, dependency health)
+  + **Grafana dashboards** + **OpenTelemetry** tail-sampled tracing
+- **GitHub Actions CI/CD**: 7 pipelines — lint, typecheck, unit +
+  integration tests with coverage gate, security scans (pip-audit,
+  bandit, gitleaks, Trivy, CodeQL), Docker builds to GHCR, release
+  automation, docs build
+- **Typed exception hierarchy** with machine-readable error codes
 - **Structured logging** (JSON in production, colored console in dev)
-- **Rate limiting** and **CORS** middleware
-- **Alembic database migrations**
+- **Rate limiting** (edge + app + conversation tiers) and **CORS** middleware
+- **Alembic database migrations** under CODEOWNERS review
+- **Engineering documentation**: system design, 100M-user scaling model,
+  failure-mode catalog, capacity planning, 7 ADRs, 4 runbooks, SLOs,
+  threat model, prompting playbook (`docs/`)
 
 ---
 
@@ -1633,9 +1646,17 @@ class MyProviderClient(BaseLLMClient):
 |---|---|
 | API Reference (Interactive) | http://localhost:8000/docs |
 | API Reference (ReDoc) | http://localhost:8000/redoc |
+| System Design & Scaling to 100M+ | `docs/architecture/` |
+| Failure Modes & Degradation Ladder | `docs/architecture/failure-modes.md` |
+| Architecture Decision Records (7) | `docs/architecture/adr/` |
+| Operations Runbooks (4) | `docs/runbooks/` |
+| SLOs & Error Budgets | `docs/operations/slo.md` |
+| Prompt Engineering Playbook | `docs/prompting/playbook.md` |
+| Evaluation Metrics Reference | `docs/evaluation/metrics.md` |
+| Security Threat Model | `docs/security/threat-model.md` |
 | Document Exploration Notebook | `notebooks/01_document_exploration.ipynb` |
 | Evaluation Analysis Notebook | `notebooks/02_evaluation_analysis.ipynb` |
-| Architecture Diagram | `docs/assets/architecture.png` |
+| Documentation Site | `mkdocs serve` → http://localhost:8000 |
 
 ---
 
