@@ -1,3 +1,9 @@
+# Customer Support Chatbot - Python dependencies
+# Policy (2026-10-15):
+#   - Floors are minimums; CI (pip-audit + Dependabot) governs actual versions.
+#   - NEVER add a dependency without a justification comment.
+#   - Heavy ML deps (torch, transformers) are why image builds use multi-stage.
+#
 # ── Core LLM & AI ────────────────────────────────────────────────────────────
 openai>=1.12.0
 anthropic>=0.20.0
