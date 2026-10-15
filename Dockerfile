@@ -18,6 +18,15 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
+# OCI standard labels - image traceability in registries and runtimes
+LABEL org.opencontainers.image.title="customer-support-chatbot" \
+      org.opencontainers.image.description="Production RAG-based customer support chatbot" \
+      org.opencontainers.image.authors="Adil Shamim" \
+      org.opencontainers.image.url="https://github.com/AdilShamim8/Customer-Support-Chatbot-102" \
+      org.opencontainers.image.source="https://github.com/AdilShamim8/Customer-Support-Chatbot-102" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.base.name="docker.io/library/python:3.11-slim"
+
 WORKDIR /app
 
 # Install runtime system dependencies
@@ -39,12 +48,13 @@ COPY --chown=appuser:appuser . .
 
 USER appuser
 
-# Health check
+# Health check: /live is the CONTAINER liveness contract (no dependency
+# checks - a Redis blip must not restart healthy pods; that is /ready's job)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+  CMD curl -f http://localhost:8000/live || exit 1
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "src.api.main:app", \
-     "--host", "0.0.0.0", "--port", "8000", \
-     "--workers", "4", "--log-config", "/dev/null"]
+# Production entrypoint: gunicorn with the tuned profile (SSE-aware
+# timeouts, worker recycling). Override for dev: --entrypoint uvicorn ...
+CMD ["gunicorn", "src.api.main:app", "--config", "gunicorn.conf.py"]
