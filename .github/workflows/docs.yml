@@ -1,0 +1,48 @@
+# Documentation build - catches broken links and invalid config on every PR
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build MkDocs site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install MkDocs Material
+        run: pip install mkdocs-material mkdocs-material-extensions
+
+      - name: Build site (strict mode - warnings fail)
+        run: mkdocs build --strict
+
+      - name: Verify key pages exist in output
+        run: |
+          test -f site/index.html
+          test -f site/architecture/system-overview/index.html
+          test -f site/architecture/scaling-100m-users/index.html
+          test -f site/operations/slo/index.html
+          test -f site/runbooks/incident-response/index.html
+          echo "Docs build verified."
+
+      - name: Upload site artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-site
+          path: site/
+          retention-days: 7
