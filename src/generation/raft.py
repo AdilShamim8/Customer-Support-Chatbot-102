@@ -14,13 +14,15 @@ import json
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import structlog
 
-from src.generation.llm_client import BaseLLMClient, LLMClientFactory, Message, MessageRole, LLMRequest
+from src.generation.llm_client import (
+    BaseLLMClient,
+    LLMClientFactory,
+)
 from src.indexing.vector_store import SearchResult
-from src.retrieval.retriever import RetrievalResult
 
 logger = structlog.get_logger(__name__)
 
@@ -63,7 +65,7 @@ class RAFTExample:
             }
         }
 
-    def to_messages(self) -> list[dict]:
+    def to_messages(self) -> dict[str, Any]:
         """Convert to OpenAI fine-tuning messages format."""
         context_text = self._format_context()
         instruction = self._build_instruction(context_text)
@@ -126,6 +128,7 @@ class RAFTDataset:
         """Convert dataset to JSONL format."""
         lines = []
         for example in self.examples:
+            record: dict[str, Any] | list[dict[str, Any]]
             if format_type == "openai":
                 record = example.to_messages()
             else:
@@ -161,6 +164,7 @@ class RAFTDataset:
             file_path = output_path / f"{split_name}.jsonl"
             with open(file_path, "w", encoding="utf-8") as f:
                 for example in split_examples:
+                    record: dict[str, Any] | list[dict[str, Any]]
                     if format_type == "openai":
                         record = example.to_messages()
                     else:
@@ -218,7 +222,7 @@ Documentation:
 Generate exactly {num_questions} questions as a JSON array:"""
 
     COT_ANSWER_PROMPT = """\
-You are a helpful customer support assistant. 
+You are a helpful customer support assistant.
 Answer the customer's question using ONLY the provided documents.
 
 Rules:
@@ -237,7 +241,7 @@ Answer (with citations):"""
 
     def __init__(
         self,
-        llm_client: Optional[BaseLLMClient] = None,
+        llm_client: BaseLLMClient | None = None,
         num_distractors: int = 3,
         oracle_probability: float = 0.8,
         questions_per_chunk: int = 3,
@@ -257,7 +261,7 @@ Answer (with citations):"""
     def generate_dataset(
         self,
         chunks: list[SearchResult],
-        max_examples: Optional[int] = None,
+        max_examples: int | None = None,
     ) -> RAFTDataset:
         """
         Generate a full RAFT dataset from document chunks.
@@ -279,7 +283,7 @@ Answer (with citations):"""
             oracle_probability=self.oracle_probability,
         )
 
-        for i, oracle_chunk in enumerate(all_chunks):
+        for _, oracle_chunk in enumerate(all_chunks):
             if max_examples and len(dataset) >= max_examples:
                 break
 
@@ -291,8 +295,12 @@ Answer (with citations):"""
                     if max_examples and len(dataset) >= max_examples:
                         break
 
-                    # Decide whether to include oracle (RAFT trick)
-                    include_oracle = random.random() < self.oracle_probability
+                    # Decide whether to include oracle (RAFT trick).
+                    # random is fine here: this selects TRAINING data, not
+                    # anything cryptographic.
+                    include_oracle = (
+                        random.random() < self.oracle_probability  # noqa: S311
+                    )
 
                     # Sample distractors (chunks from other documents)
                     distractors = self._sample_distractors(

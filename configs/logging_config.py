@@ -26,8 +26,8 @@ def add_app_context(
 
 def setup_logging() -> None:
     """Configure structlog for the application."""
-    
-    shared_processors = [
+
+    shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
@@ -39,7 +39,7 @@ def setup_logging() -> None:
 
     if settings.app_env == Environment.PRODUCTION:
         # JSON logging for production (works with log aggregators)
-        renderer = structlog.processors.JSONRenderer()
+        renderer: Any = structlog.processors.JSONRenderer()
     else:
         # Pretty console output for development
         renderer = structlog.dev.ConsoleRenderer(colors=True)

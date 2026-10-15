@@ -6,9 +6,10 @@ Includes streaming, retry logic, token counting, and cost tracking.
 
 import time
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator, Iterator, Optional
+from typing import Any
 
 import structlog
 from tenacity import (
@@ -18,7 +19,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from configs.settings import settings, LLMProvider
+from configs.settings import LLMProvider, settings
 
 logger = structlog.get_logger(__name__)
 
@@ -35,7 +36,7 @@ class Message:
     """A single conversation message."""
     role: MessageRole
     content: str
-    name: Optional[str] = None
+    name: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -81,13 +82,13 @@ class LLMResponse:
 class LLMRequest:
     """Standardized LLM request."""
     messages: list[Message]
-    model: Optional[str] = None
+    model: str | None = None
     temperature: float = 0.0
     max_tokens: int = settings.max_response_tokens
     top_p: float = 1.0
     stream: bool = False
     stop_sequences: list[str] = field(default_factory=list)
-    response_format: Optional[dict] = None    # {"type": "json_object"}
+    response_format: dict | None = None    # {"type": "json_object"}
 
 
 # ─── Pricing Table (USD per 1K tokens) ──────────────────────────────────────
@@ -139,14 +140,20 @@ class BaseLLMClient(ABC):
         pass
 
     @abstractmethod
-    async def astream(self, request: LLMRequest) -> AsyncIterator[str]:
-        pass
+    def astream(self, request: LLMRequest) -> AsyncIterator[str]:
+        """Async token stream.
+
+        Declared WITHOUT `async`: implementations are async generator
+        functions (async def + yield), whose callable type is a plain
+        function returning AsyncIterator - matching this declaration.
+        """
+        ...
 
     def chat(
         self,
         user_message: str,
-        system_prompt: Optional[str] = None,
-        history: Optional[list[Message]] = None,
+        system_prompt: str | None = None,
+        history: list[Message] | None = None,
         **kwargs,
     ) -> LLMResponse:
         """Convenience method for single-turn chat."""
@@ -191,8 +198,8 @@ class OpenAIClient(BaseLLMClient):
     def __init__(
         self,
         model: str = settings.chat_model,
-        api_key: Optional[str] = None,
-        organization: Optional[str] = None,
+        api_key: str | None = None,
+        organization: str | None = None,
     ):
         super().__init__(model)
         import openai
@@ -212,7 +219,9 @@ class OpenAIClient(BaseLLMClient):
         wait=wait_exponential(multiplier=1, min=4, max=20),
         retry=retry_if_exception_type(Exception),
     )
-    def complete(self, request: LLMRequest) -> LLMResponse:
+    # tenacity's decorator typing widens the signature; the runtime
+    # contract is unchanged.
+    def complete(self, request: LLMRequest) -> LLMResponse:  # type: ignore[override]
         start_time = time.time()
 
         params = self._build_params(request)
@@ -251,7 +260,10 @@ class OpenAIClient(BaseLLMClient):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=20),
     )
-    async def acomplete(self, request: LLMRequest) -> LLMResponse:
+    # tenacity decorator typing - see complete() above.
+    async def acomplete(  # type: ignore[override]
+        self, request: LLMRequest
+    ) -> LLMResponse:
         start_time = time.time()
 
         params = self._build_params(request)
@@ -322,7 +334,7 @@ class AnthropicClient(BaseLLMClient):
     def __init__(
         self,
         model: str = "claude-3-sonnet-20240229",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
     ):
         super().__init__(model)
         import anthropic
@@ -339,7 +351,10 @@ class AnthropicClient(BaseLLMClient):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=20),
     )
-    def complete(self, request: LLMRequest) -> LLMResponse:
+    # tenacity decorator typing - see OpenAI client's complete().
+    def complete(  # type: ignore[override]
+        self, request: LLMRequest
+    ) -> LLMResponse:
         start_time = time.time()
 
         system_prompt, messages = self._split_messages(request.messages)
@@ -410,8 +425,7 @@ class AnthropicClient(BaseLLMClient):
             system=system_prompt,
             messages=messages,
         ) as stream:
-            for text in stream.text_stream:
-                yield text
+            yield from stream.text_stream
 
     async def astream(self, request: LLMRequest) -> AsyncIterator[str]:
         system_prompt, messages = self._split_messages(request.messages)
@@ -451,7 +465,7 @@ class LLMClientFactory:
     @staticmethod
     def create(
         provider: LLMProvider = LLMProvider.OPENAI,
-        model: Optional[str] = None,
+        model: str | None = None,
         **kwargs,
     ) -> BaseLLMClient:
 

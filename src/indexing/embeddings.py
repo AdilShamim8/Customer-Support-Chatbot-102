@@ -4,13 +4,10 @@ Supports OpenAI, Cohere, and local Sentence Transformers.
 Includes caching, batching, and retry logic.
 """
 
-import asyncio
 import hashlib
-import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 import structlog
@@ -40,35 +37,35 @@ class EmbeddingResult:
     model: str
     dimension: int
     token_count: int = 0
-    
+
     def as_numpy(self) -> np.ndarray:
         return np.array(self.embeddings, dtype=np.float32)
 
 
 class BaseEmbeddingModel(ABC):
     """Abstract embedding model interface."""
-    
+
     def __init__(self, model_name: str, dimension: int, batch_size: int = 100):
         self.model_name = model_name
         self.dimension = dimension
         self.batch_size = batch_size
         self._cache: dict[str, list[float]] = {}
-    
+
     @abstractmethod
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch of texts. Override in subclasses."""
         pass
-    
+
     def embed(self, texts: list[str]) -> EmbeddingResult:
         """Embed texts with batching and caching."""
         if isinstance(texts, str):
             texts = [texts]
-        
+
         # Check cache
         embeddings = []
         uncached_texts = []
         uncached_indices = []
-        
+
         for i, text in enumerate(texts):
             cache_key = self._cache_key(text)
             if cache_key in self._cache:
@@ -76,38 +73,38 @@ class BaseEmbeddingModel(ABC):
             else:
                 uncached_texts.append(text)
                 uncached_indices.append(i)
-        
+
         # Embed uncached texts in batches
         if uncached_texts:
             new_embeddings = self._embed_in_batches(uncached_texts)
-            
+
             for text, embedding, original_idx in zip(
-                uncached_texts, new_embeddings, uncached_indices
+                uncached_texts, new_embeddings, uncached_indices, strict=False
             ):
                 cache_key = self._cache_key(text)
                 self._cache[cache_key] = embedding
                 embeddings.append((original_idx, embedding))
-        
+
         # Sort by original index
         embeddings.sort(key=lambda x: x[0])
         final_embeddings = [e for _, e in embeddings]
-        
+
         return EmbeddingResult(
             texts=texts,
             embeddings=final_embeddings,
             model=self.model_name,
             dimension=self.dimension,
         )
-    
+
     def embed_single(self, text: str) -> list[float]:
         """Embed a single text."""
         result = self.embed([text])
         return result.embeddings[0]
-    
+
     def _embed_in_batches(self, texts: list[str]) -> list[list[float]]:
         """Process texts in batches."""
         all_embeddings = []
-        
+
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             logger.debug(
@@ -117,11 +114,13 @@ class BaseEmbeddingModel(ABC):
             )
             batch_embeddings = self._embed_batch(batch)
             all_embeddings.extend(batch_embeddings)
-        
+
         return all_embeddings
-    
+
     def _cache_key(self, text: str) -> str:
-        return hashlib.md5(f"{self.model_name}:{text}".encode()).hexdigest()
+        # md5 is deliberate: a cache key over (model, text) for embedding
+        # deduplication - fast, and no adversary controls the input pair.
+        return hashlib.md5(f"{self.model_name}:{text}".encode()).hexdigest()  # noqa: S324
 
 
 class OpenAIEmbeddingModel(BaseEmbeddingModel):
@@ -129,39 +128,43 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
     OpenAI embedding model (text-embedding-3-small/large).
     Recommended for production use with OpenAI backend.
     """
-    
+
     _DIMENSIONS = {
         "text-embedding-3-small": 1536,
         "text-embedding-3-large": 3072,
         "text-embedding-ada-002": 1536,
     }
-    
+
     def __init__(
         self,
         model_name: str = "text-embedding-3-small",
         **kwargs,
     ):
         import openai
-        
+
         dimension = self._DIMENSIONS.get(model_name, 1536)
         super().__init__(model_name, dimension, **kwargs)
         self.client = openai.OpenAI(api_key=settings.openai_api_key)
-    
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
         retry=retry_if_exception_type(Exception),
     )
-    def _embed_batch(self, texts: list[str]) -> list[list[float]]:
+    # tenacity's decorator typing widens the signature; the runtime
+    # contract is unchanged.
+    def _embed_batch(  # type: ignore[override]
+        self, texts: list[str]
+    ) -> list[list[float]]:
         """Call OpenAI Embeddings API with retry logic."""
         # Clean texts
         cleaned = [t.replace("\n", " ").strip() for t in texts]
-        
+
         response = self.client.embeddings.create(
             model=self.model_name,
             input=cleaned,
         )
-        
+
         return [item.embedding for item in response.data]
 
 
@@ -170,7 +173,7 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
     Local embedding using Sentence Transformers.
     Good for offline/private deployments.
     """
-    
+
     _POPULAR_MODELS = {
         "all-MiniLM-L6-v2": 384,
         "all-mpnet-base-v2": 768,
@@ -178,22 +181,22 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
         "BAAI/bge-large-en-v1.5": 1024,
         "BAAI/bge-base-en-v1.5": 768,
     }
-    
+
     def __init__(
         self,
         model_name: str = "BAAI/bge-large-en-v1.5",
-        device: Optional[str] = None,
+        device: str | None = None,
         **kwargs,
     ):
         from sentence_transformers import SentenceTransformer
-        
+
         dimension = self._POPULAR_MODELS.get(model_name, 768)
         super().__init__(model_name, dimension, **kwargs)
-        
+
         import torch
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        
+
         logger.info(
             "Loading Sentence Transformer",
             model=model_name,
@@ -201,7 +204,7 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
         )
         self.model = SentenceTransformer(model_name, device=device)
         self.device = device
-    
+
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         embeddings = self.model.encode(
             texts,
@@ -214,14 +217,14 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
 
 class EmbeddingModelFactory:
     """Factory for creating embedding models."""
-    
+
     @staticmethod
     def create(
         provider: EmbeddingProvider = EmbeddingProvider.OPENAI,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         **kwargs,
     ) -> BaseEmbeddingModel:
-        
+
         if provider == EmbeddingProvider.OPENAI:
             return OpenAIEmbeddingModel(
                 model_name=model_name or settings.embedding_model,
@@ -234,7 +237,7 @@ class EmbeddingModelFactory:
             )
         else:
             raise ValueError(f"Unsupported embedding provider: {provider}")
-    
+
     @staticmethod
     def create_default() -> BaseEmbeddingModel:
         """Create the default embedding model from settings."""

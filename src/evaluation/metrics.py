@@ -14,10 +14,7 @@ Also implements:
 import json
 import re
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
 
-import numpy as np
 import structlog
 
 from src.generation.llm_client import (
@@ -61,8 +58,8 @@ class EvaluationSample:
     question: str
     answer: str                          # Model's generated answer
     contexts: list[str]                  # Retrieved context chunks
-    ground_truth: Optional[str] = None  # Reference answer (for correctness)
-    question_id: Optional[str] = None
+    ground_truth: str | None = None  # Reference answer (for correctness)
+    question_id: str | None = None
     metadata: dict = field(default_factory=dict)
 
 
@@ -79,7 +76,7 @@ class EvaluationResult:
 
     def compute_overall(
         self,
-        weights: Optional[dict[str, float]] = None,
+        weights: dict[str, float] | None = None,
     ) -> float:
         """Compute weighted average of all metric scores."""
         if not self.scores:
@@ -220,7 +217,7 @@ Respond with JSON:
   "missing_facts": ["<fact 1>", "..."]
 }}"""
 
-    def __init__(self, llm_client: Optional[BaseLLMClient] = None):
+    def __init__(self, llm_client: BaseLLMClient | None = None):
         self.llm = llm_client or LLMClientFactory.create_default()
 
     def _evaluate(
@@ -301,11 +298,11 @@ Respond with JSON:
             score = self._evaluate(prompt, "context_relevance", threshold)
             scores.append(score.score)
 
-        avg_score = np.mean(scores) if scores else 0.0
+        avg_score = sum(scores) / len(scores) if scores else 0.0
 
         return MetricScore(
             metric_name="context_relevance",
-            score=float(avg_score),
+            score=avg_score,
             reasoning=f"Average relevance across {len(scores)} contexts",
             details={
                 "individual_scores": scores,

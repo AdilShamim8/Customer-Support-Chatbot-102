@@ -5,7 +5,7 @@ Health check routes for monitoring and orchestration.
 import time
 
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 
 from src import __version__
 from src.api.schemas import HealthResponse
@@ -61,14 +61,13 @@ async def health_check(request: Request) -> HealthResponse:
 
 
 @router.get("/ready")
-async def readiness_check(request: Request) -> dict:
+async def readiness_check(request: Request) -> dict | Response:
     """Kubernetes readiness probe endpoint."""
     try:
         pipeline = request.app.state.rag_pipeline
         _ = pipeline.get_pipeline_stats()
         return {"ready": True}
     except Exception:
-        from fastapi import Response
         return Response(status_code=503, content="Not ready")
 
 
