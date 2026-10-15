@@ -15,6 +15,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from configs.logging_config import setup_logging
 from configs.settings import settings
+from src import __version__
 from src.api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
 from src.api.routes import chat, admin, health
 from src.generation.llm_client import LLMClientFactory
@@ -42,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(
         "Starting Customer Support Chatbot",
         env=settings.app_env.value,
-        version="1.0.0",
+        version=__version__,
     )
 
     startup_start = time.time()
@@ -147,7 +148,7 @@ def create_app() -> FastAPI:
             "Uses retrieval-augmented generation with hybrid search, "
             "reranking, and prompt engineering."
         ),
-        version="1.0.0",
+        version=__version__,
         docs_url="/docs" if settings.is_development else None,
         redoc_url="/redoc" if settings.is_development else None,
         lifespan=lifespan,
@@ -156,7 +157,7 @@ def create_app() -> FastAPI:
     # ── Middleware (order matters - applied in reverse) ────────────────────────
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.is_development else ["https://yourdomain.com"],
+        allow_origins=settings.cors_origin_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
