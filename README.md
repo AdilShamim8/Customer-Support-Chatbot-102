@@ -4,9 +4,10 @@
 ### Production-Grade RAG System with Prompt Engineering & PEFT Fine-Tuning
 
 
+[![CI](https://github.com/AdilShamim8/Customer-Support-Chatbot-102/actions/workflows/ci.yml/badge.svg)](https://github.com/AdilShamim8/Customer-Support-Chatbot-102/actions/workflows/ci.yml)
+[![Security](https://github.com/AdilShamim8/Customer-Support-Chatbot-102/actions/workflows/security.yml/badge.svg)](https://github.com/AdilShamim8/Customer-Support-Chatbot-102/actions/workflows/security.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991.svg?style=flat&logo=openai&logoColor=white)](https://openai.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E.svg?style=flat)](LICENSE)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat)](https://github.com/psf/black)
@@ -19,12 +20,17 @@
 **A fully production-ready AI customer support system built on**
 **Retrieval-Augmented Generation (RAG), advanced prompt engineering,**
 **hybrid search, reranking, and parameter-efficient fine-tuning.**
+
+**v1.1.0** · organized 2026-10-15 · 7 CI pipelines · 7 ADRs · 4 runbooks · [engineering docs](docs/)
+
 > ### To better understand this project, first visit this link for a visualization of the project and what I built: [Link](https://ragchatbot1.space-z.ai/)
 > ### Then, if you want to learn each topic in a tutorial format, read this file thoroughly: [Link](https://github.com/AdilShamim8/Customer-Support-Chatbot-102/blob/main/Tutorial-102.md)
 
 [Quick Start](#-quick-start) •
 [Architecture](#-architecture) •
 [Features](#-features) •
+[Production Deployment](#-production-deployment) •
+[Operations & SLOs](#%EF%B8%8F-operations--slos) •
 [Documentation](#-documentation) •
 [API Reference](#-api-reference) •
 [Evaluation](#-evaluation) •
@@ -65,10 +71,16 @@
 ## 🌟 Overview
 
 This system is a **production-grade customer support chatbot** that combines the
-power of **Retrieval-Augmented Generation (RAG)** with **advanced prompt 
-engineering** and **parameter-efficient fine-tuning (PEFT)**. It is designed 
-to answer customer questions accurately by grounding responses in your own 
+power of **Retrieval-Augmented Generation (RAG)** with **advanced prompt
+engineering** and **parameter-efficient fine-tuning (PEFT)**. It is designed
+to answer customer questions accurately by grounding responses in your own
 documentation — eliminating hallucinations and ensuring policy-compliant answers.
+
+> **v1.1.0 (2026-10-15)**: the repository is organized as a production system —
+> CI quality gates, Kubernetes/Terraform deployment stack, SLO-driven alerting,
+> a failure-mode catalog with a degradation ladder, ADRs, runbooks, and a
+> golden-set evaluation release gate. Start from
+> [docs/architecture/system-overview.md](docs/architecture/system-overview.md).
 
 ### Why This Exists
 
