@@ -331,102 +331,91 @@ Test Dataset (question, context, answer, ground_truth)
 customer-support-chatbot/
 │
 ├── 📁 configs/                    # Application configuration
-│   ├── __init__.py
 │   ├── settings.py                # Pydantic Settings — all env vars typed
 │   └── logging_config.py          # Structlog — JSON prod / colored dev
+│
+├── 📁 src/
+│   ├── __version__.py             # Single source of truth for version
+│   ├── core/                      # Typed exception hierarchy
+│   ├── parsing/                   # Document ingestion layer
+│   ├── indexing/                  # Embeddings + vector/keyword/hybrid indexes
+│   ├── retrieval/                 # Retriever + reranker + search strategies
+│   ├── generation/                # LLM clients + prompt engine + RAFT
+│   ├── pipeline/                  # RAG orchestration + conversation state
+│   ├── evaluation/                # Metrics + evaluator + benchmarks
+│   ├── monitoring/                # Metrics + tracing
+│   ├── database/                  # Async SQLAlchemy connection
+│   └── api/                       # FastAPI app, routes, auth, middleware
+│
+├── 📁 deploy/
+│   ├── kubernetes/                # Production manifests (deploy/HPA/PDB/
+│   │   ├── overlays/              #   kustomize staging & production overlays
+│   │   └── …                      #   ingress, netpol, Redis, Postgres)
+│   ├── terraform/                 # VPC, EKS, ElastiCache, RDS as code
+│   └── nginx/                     # Edge config — SSE-safe, rate-limited
+│
+├── 📁 docs/                       # Engineering documentation (MkDocs)
+│   ├── architecture/              #   System design, 100M-user scaling,
+│   │   └── adr/                   #   failure modes, capacity, 7 ADRs
+│   ├── runbooks/                  #   Incident, deploy, rollback, rebuild
+│   ├── operations/                #   SLOs + monitoring guide
+│   ├── prompting/                 #   Prompt engineering playbook
+│   ├── evaluation/                #   Metrics reference
+│   ├── security/                  #   Threat model
+│   └── development/               #   Getting started
+│
+├── 📁 monitoring/
+│   ├── prometheus.yml             # Scrape config
+│   ├── alerts.yml                 # SLO burn + dependency alerts
+│   ├── otel-collector.yaml        # Tail-based trace sampling
+│   └── grafana/dashboards/        # Provisioned dashboards
 │
 ├── 📁 data/
 │   ├── raw/                       # Source documents (PDF, DOCX, etc.)
 │   ├── processed/                 # Chunked JSONL files
-│   ├── sample_docs/               # Sample FAQ and policy documents
-│   └── eval/                      # Evaluation datasets and reports
+│   ├── sample_docs/               # FAQ + 4 policy documents
+│   └── eval/                      # Golden sets: FAQ, multi-hop, adversarial
 │
 ├── 📁 migrations/                 # Alembic database migrations
-│   ├── env.py
-│   └── versions/
-│       └── 001_initial.py         # Initial schema
-│
-├── 📁 models/                     # Fine-tuned LoRA adapters (git-ignored)
-│
-├── 📁 monitoring/
-│   ├── prometheus.yml             # Prometheus scrape config
-│   └── grafana/
-│       └── dashboards/
-│           ├── chatbot_dashboard.json
-│           └── provisioning.yml
-│
-├── 📁 notebooks/
-│   ├── 01_document_exploration.ipynb   # Chunking analysis
-│   └── 02_evaluation_analysis.ipynb    # Metric visualization
+├── 📁 notebooks/                  # Chunking + evaluation analysis
 │
 ├── 📁 scripts/
 │   ├── ingest_documents.py        # CLI: parse → chunk → index
-│   ├── build_index.py             # CLI: rebuild index from processed JSONL
-│   ├── evaluate_pipeline.py       # CLI: run evaluation suite
-│   └── finetune_adapter.py        # CLI: LoRA / QLoRA fine-tuning
-│
-├── 📁 src/
-│   ├── __init__.py
-│   │
-│   ├── 📁 parsing/                # Document ingestion layer
-│   │   ├── document_parser.py     # PDF/DOCX/HTML/MD parsers
-│   │   └── chunking.py            # 6 chunking strategies
-│   │
-│   ├── 📁 indexing/               # Search index layer
-│   │   ├── embeddings.py          # OpenAI + SentenceTransformer
-│   │   ├── vector_store.py        # Chroma + FAISS + Pinecone
-│   │   ├── keyword_index.py       # BM25 + Elasticsearch
-│   │   └── hybrid_index.py        # RRF fusion
-│   │
-│   ├── 📁 retrieval/              # Retrieval layer
-│   │   ├── retriever.py           # Orchestrates hybrid search
-│   │   └── reranker.py            # Cohere + CrossEncoder + FlashRank
-│   │
-│   ├── 📁 generation/             # Generation layer
-│   │   ├── llm_client.py          # OpenAI + Anthropic clients
-│   │   ├── prompt_engine.py       # All prompt strategies
-│   │   └── raft.py                # RAFT training data generation
-│   │
-│   ├── 📁 pipeline/               # Orchestration layer
-│   │   ├── rag_pipeline.py        # End-to-end RAG pipeline
-│   │   └── conversation.py        # Redis-backed session management
-│   │
-│   ├── 📁 evaluation/             # Evaluation layer
-│   │   ├── metrics.py             # All metric implementations
-│   │   └── evaluator.py           # Batch evaluation orchestrator
-│   │
-│   └── 📁 api/                    # API layer
-│       ├── main.py                # FastAPI app + lifespan
-│       ├── schemas.py             # Pydantic request/response models
-│       ├── middleware.py          # Logging + rate limiting
-│       └── routes/
-│           ├── chat.py            # POST /chat, /feedback
-│           ├── admin.py           # Documents, evaluation, stats
-│           └── health.py          # /health, /ready, /live
+│   ├── build_index.py             # CLI: rebuild index from JSONL
+│   ├── evaluate_pipeline.py       # CLI: evaluation suite + release gate
+│   ├── finetune_adapter.py        # CLI: LoRA / QLoRA fine-tuning
+│   ├── preflight.sh               # Post-deploy smoke verification
+│   └── release.sh                 # Version bump + tag + changelog checks
 │
 ├── 📁 tests/
-│   ├── unit/                      # Fast, no I/O tests
-│   │   ├── test_chunking.py
-│   │   ├── test_rrf.py
-│   │   ├── test_paragraph_chunker.py
-│   │   ├── test_faiss_persistence.py
-│   │   └── test_async_streaming.py
-│   ├── integration/               # Tests with mocked LLM
-│   │   └── test_rag_pipeline.py
-│   └── e2e/                       # Full stack tests
-│       └── test_api_e2e.py
+│   ├── unit/                      # Exceptions, settings, version, schemas,
+│   │                              #   auth, chunking, RRF, prompts
+│   ├── integration/               # Health/probe contracts, RAG pipeline
+│   ├── e2e/                       # Full-stack API tests
+│   └── load/                      # Locust profiles (peak + viral burst)
 │
 ├── 📁 .github/
-│   └── workflows/
-│       └── ci.yml                 # Lint → Test → Docker build
+│   ├── workflows/                 # ci, security, codeql, docker, release,
+│   │                              #   docs, stale — 7 pipelines
+│   ├── ISSUE_TEMPLATE/            # Bug + feature templates
+│   ├── CODEOWNERS                 # Review routing on security paths
+│   └── dependabot.yml             # Weekly grouped dependency updates
 │
-├── .env.example                   # Environment variable template
-├── alembic.ini                    # Database migration config
-├── docker-compose.yml             # Full 7-service stack
+├── .env.example                   # Dev environment template
+├── .env.production.example        # Production surface (secrets via manager)
+├── .pre-commit-config.yaml        # black/isort/ruff/flake8/gitleaks hooks
+├── gunicorn.conf.py               # Production server profile
+├── mkdocs.yml                     # Documentation site config
+├── CHANGELOG.md                   # Keep-a-Changelog releases
+├── SECURITY.md · SUPPORT.md · CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md                # Contribution guide
+├── alembic.ini                    # Migration config
+├── docker-compose.yml             # Dev stack
+├── docker-compose.prod.yml        # Production-shaped local stack
 ├── Dockerfile                     # Multi-stage production build
-├── Makefile                       # Developer convenience commands
-├── pyproject.toml                 # Project metadata + tool config
-└── requirements.txt               # All Python dependencies
+├── Makefile                       # Developer command surface
+├── pyproject.toml                 # Metadata + ruff/mypy/coverage/pytest
+└── requirements.txt               # Pinned Python dependencies
 ```
 
 ---
@@ -1281,7 +1270,7 @@ Every log line in production (JSON format) includes:
 
 ```json
 {
-  "timestamp": "2024-01-15T10:23:41.123Z",
+  "timestamp": "2026-10-15T10:23:41.123Z",
   "level": "info",
   "logger": "src.pipeline.rag_pipeline",
   "event": "RAG query complete",
