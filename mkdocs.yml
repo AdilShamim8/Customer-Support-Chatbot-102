@@ -55,6 +55,7 @@ nav:
   - Operations:
       - SLOs: operations/slo.md
       - Monitoring: operations/monitoring.md
+      - On-Call Guide: operations/on-call.md
       - Runbooks:
           - Index: runbooks/README.md
           - Incident Response: runbooks/incident-response.md
@@ -66,6 +67,7 @@ nav:
       - Evaluation Metrics: evaluation/metrics.md
       - Getting Started: development/getting-started.md
       - Troubleshooting: development/troubleshooting.md
+      - Code Review Checklist: development/code-review-checklist.md
       - API Reference: api/README.md
   - Security:
       - Threat Model: security/threat-model.md
