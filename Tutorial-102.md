@@ -2,6 +2,14 @@
 
 ### The Most Beginner-Friendly, End-to-End, Deep Tutorial — DEFINITIVE VERSION
 
+> **Companion material (2026-10-15)**: the tutorial teaches the concepts;
+> the engineering documentation shows how they run in production —
+> [System overview](docs/architecture/system-overview.md) ·
+> [Prompting playbook](docs/prompting/playbook.md) ·
+> [Evaluation metrics](docs/evaluation/metrics.md) ·
+> [Failure modes](docs/architecture/failure-modes.md) ·
+> [Scaling to 100M+](docs/architecture/scaling-100m-users.md)
+
 ---
 
 # Full Roadmap of Everything We Will Cover
