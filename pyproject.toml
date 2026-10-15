@@ -64,8 +64,19 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106"]
+"tests/*" = [
+    "S101",  # assert allowed in tests
+    "S105",  # dummy secrets in fixtures
+    "S106",  # dummy secrets in fixtures
+    "S108",  # synthetic paths in fixtures (no real file ops)
+    "E402",  # env setup + importorskip must precede imports (conftest pattern)
+]
+"tests/load/*" = [
+    "S311",  # load profiles sample with random - not cryptography
+]
 "scripts/*" = ["T201"]
+# print_summary() is a human-facing console report; prints are its interface
+"src/evaluation/evaluator.py" = ["T201"]
 
 # ── mypy: static typing ──────────────────────────────────────────────────────
 [tool.mypy]
@@ -82,6 +93,10 @@ exclude = "migrations/"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-ra --strict-markers --tb=short"
+# Import path for `src`/`configs`: bare `pytest` (CI, Makefile) does not put
+# the repo root on sys.path the way `python -m pytest` does. Without this,
+# every test importing src.* fails collection with ModuleNotFoundError.
+pythonpath = ["."]
 markers = [
     "unit: fast, isolated tests (no network, no containers)",
     "integration: tests requiring service dependencies (redis)",
