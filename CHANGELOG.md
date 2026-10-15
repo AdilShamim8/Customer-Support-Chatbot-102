@@ -8,42 +8,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-10-15
 
 ### Added
-- Production CI/CD pipeline (lint, type-check, security scans, tests, Docker build)
-- CodeQL advanced security analysis workflow
-- Dependabot dependency automation (pip, Docker, GitHub Actions)
-- Kubernetes deployment stack: Deployment, HPA (autoscaling), PDB, Ingress,
-  NetworkPolicy, ConfigMap, and external Redis/Postgres manifests
-- Terraform infrastructure-as-code for the full serving stack
-- Nginx reverse-proxy configuration with connection and rate limits
-- Gunicorn production server configuration (uvicorn workers)
-- Prometheus alerting rules (latency SLO burn, error rate, saturation)
-- OpenTelemetry collector configuration for distributed tracing
-- Documentation site (MkDocs Material) with full operations content
-- Architecture Decision Records (ADRs 0001-0007)
-- Production runbooks: incident response, deployment, rollback, index rebuild
-- System design documentation: scaling to 100M-200M MAU, failure-mode
-  analysis, capacity planning, and SLO definitions
-- Threat model and security hardening guide
-- Prompt engineering playbook (zero-shot, few-shot, CoT, role/context)
-- Evaluation metrics reference (context relevance, faithfulness,
-  answer correctness)
-- Unit and integration test expansion: settings, auth, middleware, schemas,
-  health, admin routes
-- Shared pytest fixtures and test configuration (`tests/conftest.py`)
-- Release automation and preflight scripts
-- Extended sample knowledge base (policies, shipping, returns, account)
+- Production CI/CD: 9 workflows (ci, security, codeql, docker, release,
+  docs, stale, label, eval-gate) with coverage floor and smoke gates
+- CodeQL advanced security analysis; Dependabot with grouped updates
+- Kubernetes deployment stack: Deployment, HPA (6-1000 pods), PDB,
+  Ingress (SSE-safe), NetworkPolicy (zero-trust), ConfigMap, Redis and
+  Postgres StatefulSets, ServiceMonitor + PriorityClass, Kustomize
+  overlays for staging and production
+- Terraform infrastructure-as-code: VPC (3 AZ), EKS, ElastiCache
+  (multi-AZ), RDS (HA + PITR + deletion protection), Secrets Manager
+- Nginx edge configuration: SSE-safe proxying, three-tier rate limits,
+  JSON access logs
+- Gunicorn production server profile (uvicorn workers, SSE-aware
+  graceful drain, worker recycling)
+- Prometheus alerting rules: SLO burn rates (fast + slow), dependency
+  health, saturation, crash loops - every alert links a runbook
+- OpenTelemetry collector with tail-based trace sampling (errors and
+  slow traces always kept)
+- Grafana RAG answer-quality dashboard (SLO thresholds, cache hit rate,
+  cost per 1k answers, fallback rate)
+- Documentation site (MkDocs Material, strict CI build) with full nav
+- Architecture Decision Records 0001-0007 with alternatives considered
+- Runbooks: incident response (kill-switch ladder), deployment (canary
+  shape, migration rules), rollback (app/config/DB/infra), blue/green
+  vector index rebuild
+- System design docs: 100M-200M user scaling model, failure-mode
+  catalog with degradation ladder, capacity planning (Little's Law),
+  request data-flow walkthrough with timings
+- SLO definitions with error-budget enforcement policy; monitoring and
+  observability guide; on-call guide with authority boundaries
+- STRIDE threat model with prompt-injection mitigation layers
+- Prompt engineering playbook (all four strategies, assembly order,
+  anti-patterns earned by eval regressions)
+- Evaluation metrics reference with the three-metric diagnostic matrix
+- Golden evaluation sets: FAQ (10), multi-hop (7), adversarial (10)
+- Extended sample knowledge base: returns, shipping, account security,
+  warranty (cross-referenced for multi-hop evaluation)
+- Test expansion: exceptions, settings, version single-source (with
+  hardcoded-version grep guard), schemas, auth/RBAC, rate limiter
+  (fail-open), middleware correlation IDs, prompt engine (injection
+  containment), metrics contracts, probe endpoints, chat and admin
+  route contracts, golden-set integrity, env-contract drift guard,
+  K8s/workflow manifest integrity
+- Operational scripts: preflight smoke (runbook-referenced), release
+  helper with version-parity verification, build_index --build/--verify
+  gates, evaluator --gate mode with multi-dataset support
+- Repo hygiene: .gitignore, .dockerignore, .editorconfig,
+  .pre-commit-config.yaml (8 hook suites), .gitattributes (LF
+  enforcement), .git-blame-ignore-revs, SECURITY_INSIGHTS.yml
+- Community files: SECURITY.md, SUPPORT.md, CODE_OF_CONDUCT.md,
+  PR/issue templates, CODEOWNERS, path-based PR auto-labeling
 
 ### Changed
-- Version single-source-of-truth moved to `src/__version__.py`
-- README restructured with production deployment guide
-- All documentation timestamps refreshed to 2026-10-15
-- `pyproject.toml` completed with ruff, mypy, coverage, and bandit config
-- Dependency floors tightened with lockfile-style constraints
+- Version single-source-of-truth in `src/__version__.py` (v1.1.0);
+  app factory, health endpoint, and release tooling all consume it
+- Typed exception hierarchy (`src/core/exceptions.py`) with
+  machine-readable codes, HTTP mapping, and explicit retryability;
+  `src/api/errors.py` unified as the RFC 7807 translator (removed the
+  duplicate parallel hierarchy)
+- Settings expanded with production hardening surface (timeouts,
+  circuit breaker, semantic cache, CORS policy, kill-switches) and
+  aligned with documented env names
+- CRLF normalized to LF across 68 tracked files; enforced going forward
+- `pyproject.toml` completed: ruff, mypy, coverage, bandit, pytest
+  marker configuration; proper Poetry metadata
+- Makefile rebuilt as the developer command surface (quality, tests,
+  load, RAG ops, release, docs targets)
+- README overhauled: CI badges, v1.1.0 organization note, production
+  deployment and operations/SLO sections, ADR links, updated structure
+  tree, test inventory, eval/monitoring sections
 
 ### Fixed
 - Missing `.gitignore` (repository hygiene risk)
-- Hardcoded version strings scattered across modules
-- Stale 2024 example timestamps in API documentation
+- `src/indexing/embeddings.py`: missing `dataclasses` import broke the
+  entire indexing package at import time
+- Missing `admin_api_key` setting - auth initialization would raise
+  AttributeError with the documented env var set
+- Missing `test` environment value (CI and local test runs could not boot)
+- ConfigMap carried a secret-shaped DATABASE_URL (moved to Secret only)
+- servicemonitor.yaml missing from Kustomize resources
+- Dockerfile healthcheck used `/health` (dependency-aware) instead of
+  `/live` (container liveness); entrypoint now uses the gunicorn profile
+- K8s securityContext UID mismatch with image appuser (10001 vs 1000)
+- CI integration tests used `--timeout` without installing pytest-timeout
+- Stale 2024 example timestamps across README and Tutorial refreshed to
+  the 2026-10-15 cycle
 
 ## [1.0.0] - 2026-06-04
 
