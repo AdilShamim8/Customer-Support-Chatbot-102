@@ -46,11 +46,7 @@ async def health_check(request: Request) -> HealthResponse:
     except Exception as e:
         components["redis"] = f"unhealthy: {str(e)}"
 
-    overall_status = (
-        "healthy"
-        if all("healthy" in v for v in components.values())
-        else "degraded"
-    )
+    overall_status = "healthy" if all("healthy" in v for v in components.values()) else "degraded"
 
     return HealthResponse(
         status=overall_status,
@@ -60,9 +56,14 @@ async def health_check(request: Request) -> HealthResponse:
     )
 
 
-@router.get("/ready")
+@router.get("/ready", response_model=None)
 async def readiness_check(request: Request) -> dict | Response:
-    """Kubernetes readiness probe endpoint."""
+    """Kubernetes readiness probe endpoint.
+
+    response_model=None: the union return annotation is for mypy and the
+    503 fast-path returns a bare Response - FastAPI must not try to build
+    a response field from `dict | Response`.
+    """
     try:
         pipeline = request.app.state.rag_pipeline
         _ = pipeline.get_pipeline_stats()
