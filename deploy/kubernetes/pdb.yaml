@@ -1,0 +1,15 @@
+# PodDisruptionBudget - voluntary disruption guard.
+# Node upgrades / cluster autoscaler must never evict enough pods to break
+# the serving floor. Combined with maxUnavailable: 0 in the Deployment
+# strategy, this yields zero-downtime operations.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chatbot-api
+  namespace: chatbot
+spec:
+  minAvailable: 5     # absolute floor >= minReplicas - 1 zone
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: customer-support-chatbot
+      app.kubernetes.io/component: api
