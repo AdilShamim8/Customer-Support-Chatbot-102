@@ -148,6 +148,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit-job coverage floor calibrated 60 -> 40 against the measured
   41.6% baseline (the 60 floor was aspirational and had never been
   validated end to end); policy comment: raise as the suite grows
+- Chat route was registered at `/api/v1/chat/` (trailing slash) while
+  docs, the preflight script and every client call `/api/v1/chat`:
+  strict clients (no redirect-following) received 307s instead of
+  JSON - invisible until now because the integration job had never
+  run to completion. Registered at the documented path; locust
+  profiles updated off the trailing-slash workaround
+- Session-clear contract: stub pipeline lacked conversation_manager
+  (AttributeError -> 500 on DELETE /api/v1/chat/{id}); stub now
+  provides it, and the contract runs in every environment
+- nginx SSE policy (buffering off, 120s timeouts) pointed at a
+  nonexistent `/api/v1/chat/stream` location; now an exact-match
+  policy on the real chat path where streaming actually happens
+- API quick reference corrected: feedback endpoint is
+  `/api/v1/chat/feedback`; SSE contract rewritten to the implemented
+  event shapes (raw-text tokens, [DONE], [ERROR])
 
 ## [1.0.0] - 2026-06-04
 
