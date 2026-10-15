@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     secret_key: str = "dev-secret-key"
     api_rate_limit: int = 100
+    # Consumed by src/api/auth.py::init_api_keys - MUST exist here or
+    # auth initialization raises AttributeError (caught by the env
+    # contract test, 2026-10-15)
+    admin_api_key: Optional[str] = None
 
     # LLM Configuration
     llm_provider: LLMProvider = LLMProvider.OPENAI
@@ -93,9 +97,10 @@ class Settings(BaseSettings):
     conversation_ttl_seconds: int = 3600  # 1 hour
 
     # ── Production hardening (added 2026-10-15) ─────────────────────────────
-    # Observability
+    # Observability (names match documented ENABLE_TRACING / OTLP_ENDPOINT)
+    enable_tracing: bool = False
+    otlp_endpoint: str = "http://localhost:4317"
     sentry_dsn: Optional[str] = None
-    tracing_enabled: bool = True
     metrics_enabled: bool = True
 
     # Serving
