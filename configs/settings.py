@@ -14,6 +14,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Environment(str, Enum):
     DEVELOPMENT = "development"
     STAGING = "staging"
+    TEST = "test"
     PRODUCTION = "production"
 
 
@@ -143,7 +144,7 @@ class Settings(BaseSettings):
 
     @property
     def is_development(self) -> bool:
-        return self.app_env == Environment.DEVELOPMENT
+        return self.app_env in (Environment.DEVELOPMENT, Environment.TEST)
 
 
 @lru_cache()
