@@ -7,6 +7,7 @@ import time
 import structlog
 from fastapi import APIRouter, Request
 
+from src import __version__
 from src.api.schemas import HealthResponse
 
 logger = structlog.get_logger(__name__)
@@ -53,7 +54,7 @@ async def health_check(request: Request) -> HealthResponse:
 
     return HealthResponse(
         status=overall_status,
-        version="1.0.0",
+        version=__version__,
         components=components,
         uptime_seconds=round(time.time() - _start_time, 1),
     )
