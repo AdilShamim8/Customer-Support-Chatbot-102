@@ -1,0 +1,12 @@
+# Flake8 configuration - mirrors the CI and Makefile invocation so local
+# runs match the gate exactly:
+#   flake8 src/ configs/ scripts/ tests/ --max-line-length=100 --extend-ignore=E203
+# (explicit CLI args in CI/Makefile win over these defaults; the
+# per-file-ignores here still apply in both places)
+[flake8]
+max-line-length = 100
+extend-ignore = E203
+per-file-ignores =
+    # Scripts bootstrap sys.path before importing src/configs so they run
+    # standalone from any cwd - imports after that bootstrap are deliberate.
+    scripts/*: E402
