@@ -1,0 +1,14 @@
+# Namespace isolates the chatbot serving tier for quota, RBAC, and network
+# policy scoping. All manifests in this directory target this namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chatbot
+  labels:
+    app.kubernetes.io/name: customer-support-chatbot
+    app.kubernetes.io/part-of: support-platform
+    environment: production
+    # Pod Security Standards: no root, no privilege escalation, read-only FS
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
