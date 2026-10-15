@@ -1,0 +1,35 @@
+# Security Insights - GitHub's repository security metadata format
+# https://github.com/community/community/discussions/92920
+version: 1
+
+points:
+  - key: "security-bug-reporting"
+    value:
+      accepts: "private-vulnerability-disclosure"
+      contact: "https://github.com/AdilShamim8/Customer-Support-Chatbot-102/security/advisories/new"
+      reward: false
+      sla: "48 hours acknowledgment, coordinated disclosure"
+
+  - key: "security-policy"
+    value:
+      policy: "SECURITY.md"
+      scope: "service code, RAG pipeline, infrastructure manifests, dependencies"
+      encryption-in-transit: "TLS 1.2+ for all external traffic"
+      encryption-at-rest: "RDS/ElastiCache/KMS"
+      secrets: "secret manager only - never images, never git"
+
+  - key: "security-testing"
+    value:
+      dependency-scanning: "pip-audit + Dependabot (weekly)"
+      static-analysis: "CodeQL (security-extended), bandit"
+      secret-scanning: "gitleaks (push protection) + detect-secrets (pre-commit)"
+      container-scanning: "Trivy on every image build"
+      fuzzing: false
+
+  - key: "security-artifact"
+    value:
+      framework: "FastAPI + Pydantic (typed validation at the boundary)"
+      auth: "API key (hashed at rest) + RBAC hierarchy"
+      rate-limiting: "3-tier: nginx edge, application, per-conversation"
+      prompt-injection: "untrusted-data framing + preprocessing controls"
+      least-privilege: "non-root read-only containers, default-deny NetworkPolicy"
