@@ -3,7 +3,7 @@
 # Production targets follow the runbooks in docs/runbooks/.
 
 .PHONY: help install dev prod build up up-prod down logs \
-	test test-unit test-integration test-e2e load-test \
+	test test-unit test-integration test-e2e load-test verify \
 	lint typecheck format precommit \
 	ingest evaluate eval-gate smoke preflight release docs \
 	clean docker-scan
@@ -31,6 +31,7 @@ help:
 	@echo "    make test-unit      Fast, isolated"
 	@echo "    make test-integration  Requires redis (make up)"
 	@echo "    make load-test      Locust (TARGET_RPS=, DURATION=)"
+	@echo "    make verify         Coherence gate before every PR"
 	@echo ""
 	@echo "  RAG Operations"
 	@echo "    make ingest         Ingest knowledge base"
@@ -98,6 +99,16 @@ precommit:
 
 test:
 	pytest tests/ -v --tb=short
+
+# Whole-repo coherence gate: the local mirror of CI. One command that
+# must be green before every PR: the hermetic unit suite, which already
+# includes the golden-set, env-contract, manifest-integrity, metrics and
+# import-isolation contracts. Integration/e2e stay separate targets -
+# they need backing stores (make up) or a deployed environment.
+verify:
+	pytest tests/unit/ -q
+	@echo "verify: OK - unit suite and repo integrity contracts are green"
+
 
 test-unit:
 	pytest tests/unit/ -v --tb=short -m "unit" --cov=src --cov=configs --cov-report=term-missing
