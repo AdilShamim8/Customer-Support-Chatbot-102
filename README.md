@@ -567,13 +567,18 @@ curl -X POST http://localhost:8000/api/v1/chat/ \
 ### Verify Installation
 
 ```bash
-# Health check
-curl http://localhost:8000/health
+# One-command smoke: probes, metrics, and (with a key) a golden question
+./scripts/preflight.sh http://localhost:8000 $ADMIN_API_KEY
 
-# Expected response:
+# Or manually:
+curl http://localhost:8000/live    # liveness - container contract
+curl http://localhost:8000/ready   # readiness - traffic contract
+curl http://localhost:8000/health  # full component health
+
+# Expected /health response:
 {
   "status": "healthy",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "components": {
     "rag_pipeline": "healthy",
     "vector_store": "healthy (142 chunks)",
@@ -589,13 +594,22 @@ curl http://localhost:8000/health
 ## ⚙️ Configuration
 
 All configuration is via environment variables. Copy `.env.example` to `.env`
-and fill in your values.
+and fill in your values. The `.env.example` ↔ Settings parity is
+**test-enforced** (`tests/unit/test_env_contract.py`) - documentation
+cannot drift from the typed config surface.
+
+Beyond the core settings below, the production hardening surface covers:
+timeouts (`REQUEST_TIMEOUT_SECONDS`, `LLM_TIMEOUT_SECONDS`), circuit
+breaker thresholds, the semantic cache (`SEMANTIC_CACHE_*`), CORS
+allow-lists, and degradation kill-switches (`ENABLE_RERANKING`,
+`ENABLE_CITATIONS`) - all documented in `.env.example` and
+[`.env.production.example`](.env.production.example).
 
 ### Core Settings
 
 ```env
 # ── Application ──────────────────────────────────────────────────────
-APP_ENV=development          # development | staging | production
+APP_ENV=development          # development | staging | test | production
 LOG_LEVEL=INFO               # DEBUG | INFO | WARNING | ERROR
 SECRET_KEY=your-secret-key
 API_RATE_LIMIT=100           # requests per minute per IP
@@ -1542,6 +1556,10 @@ VECTOR_STORE_TYPE=faiss
 ---
 
 ## 🔧 Troubleshooting
+
+> Full symptom-first guide with diagnostic flows:
+> [docs/development/troubleshooting.md](docs/development/troubleshooting.md)
+> · 3am procedures: [docs/runbooks/](docs/runbooks/README.md)
 
 ### Common Issues
 
