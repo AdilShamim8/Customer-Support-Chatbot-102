@@ -1,0 +1,26 @@
+# CODEOWNERS - automatic review routing
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+*                               @AdilShamim8
+
+# Core RAG pipeline - highest blast radius
+/src/pipeline/                   @AdilShamim8
+/src/retrieval/                  @AdilShamim8
+/src/generation/                 @AdilShamim8
+
+# Security-sensitive areas - never merged without owner review
+/src/api/auth.py                 @AdilShamim8
+/src/api/rate_limiter.py         @AdilShamim8
+/src/api/middleware.py           @AdilShamim8
+/deploy/                         @AdilShamim8
+/.github/workflows/              @AdilShamim8
+
+# Infrastructure & deployment
+/Dockerfile*                     @AdilShamim8
+/docker-compose*.yml             @AdilShamim8
+/monitoring/                     @AdilShamim8
+/deploy/terraform/               @AdilShamim8
+
+# Database migrations - irreversible in production
+/migrations/                     @AdilShamim8
