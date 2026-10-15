@@ -69,14 +69,34 @@ def main():
     setup_logging()
 
     parser = argparse.ArgumentParser(description="Evaluate RAG pipeline")
-    parser.add_argument("--dataset", type=str, default=None)
+    # Multiple --dataset flags accumulate (golden_faq + multihop + adversarial)
+    parser.add_argument("--dataset", type=str, action="append", default=None)
     parser.add_argument("--output", type=str, default="./data/eval/report.json")
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--no-llm-metrics", action="store_true")
+    # CI release gate mode (ADR-0007): fail on threshold breach instead of
+    # just writing a report. Deterministic metrics only unless key present.
+    parser.add_argument(
+        "--gate",
+        action="store_true",
+        help="exit nonzero when metrics fall below release thresholds",
+    )
+    parser.add_argument(
+        "--metrics",
+        type=str,
+        default=None,
+        help="comma-separated subset (context_relevance,faithfulness,answer_correctness)",
+    )
     args = parser.parse_args()
 
-    # Load test data
-    test_data = load_test_set(args.dataset)
+    # Load test data (all provided datasets merged, tagged by source file)
+    test_data = []
+    for dataset_path in args.dataset or [None]:
+        loaded = load_test_set(dataset_path)
+        if len(args.dataset or []) > 1:
+            for record in loaded:
+                record.setdefault("_dataset", str(dataset_path))
+        test_data.extend(loaded)
     if args.max_samples:
         test_data = test_data[:args.max_samples]
 
@@ -110,6 +130,29 @@ def main():
     report.print_summary()
     report.save(args.output)
     logger.info("Evaluation complete", output=args.output)
+
+    # Release-gate mode (ADR-0007): thresholds fail the CI job
+    if args.gate:
+        thresholds = {
+            "context_relevance": 0.75,
+            "faithfulness": 0.90,
+            "answer_correctness": 0.85,
+        }
+        metrics = report.to_dict() if hasattr(report, "to_dict") else {}
+        aggregate = metrics.get("aggregate", metrics)
+        breaches = [
+            f"{name}={aggregate.get(name, 'n/a')} < {floor}"
+            for name, floor in thresholds.items()
+            if isinstance(aggregate.get(name), (int, float)) and aggregate[name] < floor
+        ]
+        if breaches:
+            logger.error("EVAL GATE FAILED", breaches=breaches)
+            for breach in breaches:
+                print(f"GATE FAIL: {breach}")
+            return 1
+        logger.info("Eval gate passed", thresholds=thresholds)
+        print("GATE PASS: all release thresholds met")
+    return 0
 
 
 if __name__ == "__main__":
