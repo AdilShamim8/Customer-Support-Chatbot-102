@@ -1,0 +1,28 @@
+# Kustomize - one-command, overlay-ready deployment.
+#   kubectl apply -k deploy/kubernetes
+# Environments use overlays (deploy/kubernetes/overlays/{staging,prod}).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: chatbot
+
+commonLabels:
+  app.kubernetes.io/part-of: support-platform
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.example.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
+  - redis.yaml
+  - postgres.yaml
+
+images:
+  - name: ghcr.io/adilshamim8/customer-support-chatbot-102
+    newTag: v1.1.0
