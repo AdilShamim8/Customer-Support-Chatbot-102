@@ -44,8 +44,8 @@ spec:
       terminationGracePeriodSeconds: 130   # > gunicorn graceful_timeout (120s)
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        fsGroup: 10001
+        runAsUser: 1000
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       topologySpreadConstraints:
