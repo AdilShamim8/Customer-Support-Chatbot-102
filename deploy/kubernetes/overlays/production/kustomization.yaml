@@ -1,0 +1,38 @@
+# Production overlay - the real thing.
+#   kubectl apply -k deploy/kubernetes/overlays/production
+#
+# The base already carries production-grade defaults; this overlay pins
+# the environment marker and image digest immutability.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: chatbot
+
+resources:
+  - ../../
+
+labels:
+  - pairs:
+      environment: production
+
+patches:
+  - target:
+      kind: Deployment
+      name: chatbot-api
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: APP_ENV
+          value: "production"
+  # Production: availability beats iteration speed
+  - target:
+      kind: Deployment
+      name: chatbot-api
+    patch: |
+      - op: replace
+        path: /spec/strategy/rollingUpdate/maxUnavailable
+        value: 0
+      - op: replace
+        path: /spec/strategy/rollingUpdate/maxSurge
+        value: "50%"
