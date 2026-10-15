@@ -40,7 +40,7 @@ class ChatbotUser(HttpUser):
     def ask_single_question(self):
         question = random.choice(SAMPLE_QUESTIONS)
         self.client.post(
-            "/api/v1/chat/",
+            "/api/v1/chat",
             json={
                 "message": question,
                 "prompt_strategy": "rag_standard",
@@ -53,7 +53,7 @@ class ChatbotUser(HttpUser):
     def ask_followup(self):
         conv_id = random.choice(CONVERSATION_IDS)
         self.client.post(
-            "/api/v1/chat/",
+            "/api/v1/chat",
             json={
                 "message": random.choice(SAMPLE_QUESTIONS),
                 "conversation_id": conv_id,
@@ -65,7 +65,7 @@ class ChatbotUser(HttpUser):
     @task(5)  # 5% - streaming
     def streaming_request(self):
         self.client.post(
-            "/api/v1/chat/",
+            "/api/v1/chat",
             json={
                 "message": random.choice(SAMPLE_QUESTIONS),
                 "stream": True,

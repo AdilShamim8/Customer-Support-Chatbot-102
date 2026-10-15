@@ -28,6 +28,8 @@ class _StubPipeline:
     def __init__(self) -> None:
         self.calls = 0
         self.seen_config_overrides: list = []
+        # The session-clear route calls pipeline.conversation_manager.delete()
+        self.conversation_manager = SimpleNamespace(delete=lambda cid: None)
 
     @cached_property
     def config(self):

@@ -24,12 +24,13 @@ def get_pipeline(request: Request) -> RAGPipeline:
 
 
 @router.post(
-    "/",
+    "",
     response_model=ChatResponse,
     summary="Send a message to the customer support chatbot",
     description=(
         "Main chat endpoint. Supports single-turn and multi-turn conversations. "
-        "Uses RAG to retrieve relevant documentation before generating responses."
+        "Uses RAG to retrieve relevant documentation before generating responses. "
+        'Set "stream": true in the body for SSE token streaming.'
     ),
 )
 async def chat(
