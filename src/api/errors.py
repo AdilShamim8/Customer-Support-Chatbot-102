@@ -1,143 +1,90 @@
 """
-src/api/errors.py — Error Handling for the Customer Support Chatbot API
-RFC 7807 Problem Details for HTTP APIs.
-Inconsistent errors break API clients.
+src/api/errors.py — RFC 7807 error envelope for the API layer.
+
+Design (ADR-0004): the single exception hierarchy lives in
+src/core/exceptions.py. This module is a pure TRANSLATOR:
+
+    core raises ChatbotError subclass
+      → FastAPI handler here
+        → RFC 7807 problem+json envelope
+
+The old version of this file defined its own parallel ChatbotError /
+RetrievalError / GenerationError classes - duplicated names, drifted
+semantics, imported by nothing. That duplication was removed 2026-10-15;
+the envelope and the hierarchy are now one design, not two.
 """
 
-from enum import Enum
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+import structlog
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import structlog
+
+from src.core.exceptions import ChatbotError
 
 logger = structlog.get_logger(__name__)
 
+ERROR_TYPE_BASE = "https://docs.ragchatbot.example/errors"
 
-class ErrorCode(str, Enum):
-    """Application-specific error codes."""
-    # Auth errors
-    UNAUTHORIZED = "unauthorized"
-    FORBIDDEN = "forbidden"
-    INVALID_API_KEY = "invalid_api_key"
-
-    # Validation errors
-    VALIDATION_ERROR = "validation_error"
-    INVALID_FILE_TYPE = "invalid_file_type"
-    MESSAGE_TOO_LONG = "message_too_long"
-    MESSAGE_EMPTY = "message_empty"
-
-    # RAG errors
-    NO_RESULTS_FOUND = "no_results_found"
-    RETRIEVAL_FAILED = "retrieval_failed"
-    GENERATION_FAILED = "generation_failed"
-    CONTEXT_TOO_LONG = "context_too_long"
-
-    # Resource errors
-    CONVERSATION_NOT_FOUND = "conversation_not_found"
-    DOCUMENT_NOT_FOUND = "document_not_found"
-    DOCUMENT_ALREADY_EXISTS = "document_already_exists"
-
-    # System errors
-    RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
-    SERVICE_UNAVAILABLE = "service_unavailable"
-    LLM_API_ERROR = "llm_api_error"
-    INTERNAL_ERROR = "internal_error"
+# Human titles for the machine-readable codes from core.exceptions.
+# Keys are the `code` class attribute values - stable wire contract.
+ERROR_TITLES: dict[str, str] = {
+    "internal_error": "Internal Server Error",
+    "configuration_error": "Configuration Error",
+    "retrieval_error": "Retrieval Service Error",
+    "index_not_ready": "Index Not Ready",
+    "index_corruption": "Index Corrupted",
+    "embedding_error": "Embedding Service Error",
+    "generation_error": "Generation Service Error",
+    "llm_provider_error": "LLM Provider Error",
+    "llm_safety_triggered": "Content Filter Triggered",
+    "context_length_exceeded": "Context Length Exceeded",
+    "conversation_error": "Conversation Error",
+    "conversation_not_found": "Conversation Not Found",
+    "conversation_rate_limited": "Conversation Rate Limited",
+    "storage_error": "Storage Error",
+    "vector_store_error": "Vector Store Error",
+    "cache_unavailable": "Cache Unavailable",
+    "authentication_error": "Authentication Required",
+    "rate_limit_exceeded": "Rate Limit Exceeded",
+}
 
 
 class ProblemDetail(BaseModel):
-    """
-    RFC 7807 Problem Details response.
-    Standard error format for all API errors.
-    """
+    """RFC 7807 Problem Details response - the wire error contract."""
+
     type: str           # URI reference identifying problem type
     title: str          # Short human-readable summary
     status: int         # HTTP status code
     detail: str         # Specific explanation for this occurrence
     instance: str       # URI reference identifying specific occurrence
-    code: ErrorCode     # Application error code
+    code: str           # Machine-readable application error code
+    transient: bool     # Client retryability signal (ADR-0004)
     errors: Optional[list[dict[str, Any]]] = None  # Field-level errors
 
     class Config:
         use_enum_values = True
 
 
-class ChatbotError(Exception):
-    """Base exception for all chatbot errors."""
-
-    def __init__(
-        self,
-        code: ErrorCode,
-        detail: str,
-        status_code: int = 500,
-        errors: Optional[list] = None,
-    ):
-        self.code = code
-        self.detail = detail
-        self.status_code = status_code
-        self.errors = errors
-        super().__init__(detail)
-
-
-class RetrievalError(ChatbotError):
-    def __init__(self, detail: str):
-        super().__init__(
-            code=ErrorCode.RETRIEVAL_FAILED,
-            detail=detail,
-            status_code=503,
-        )
-
-
-class GenerationError(ChatbotError):
-    def __init__(self, detail: str):
-        super().__init__(
-            code=ErrorCode.GENERATION_FAILED,
-            detail=detail,
-            status_code=503,
-        )
-
-
-class NoResultsError(ChatbotError):
-    def __init__(self, query: str):
-        super().__init__(
-            code=ErrorCode.NO_RESULTS_FOUND,
-            detail=f"No relevant documents found for: '{query[:100]}'",
-            status_code=404,
-        )
-
-
-ERROR_TYPE_BASE = "https://chatbot.yourcompany.com/errors"
-
-ERROR_TITLES = {
-    ErrorCode.UNAUTHORIZED: "Authentication Required",
-    ErrorCode.FORBIDDEN: "Access Denied",
-    ErrorCode.VALIDATION_ERROR: "Request Validation Failed",
-    ErrorCode.NO_RESULTS_FOUND: "No Results Found",
-    ErrorCode.RETRIEVAL_FAILED: "Retrieval Service Error",
-    ErrorCode.GENERATION_FAILED: "Generation Service Error",
-    ErrorCode.RATE_LIMIT_EXCEEDED: "Rate Limit Exceeded",
-    ErrorCode.INTERNAL_ERROR: "Internal Server Error",
-    ErrorCode.LLM_API_ERROR: "LLM Provider Error",
-}
-
-
 def make_problem_response(
     request: Request,
-    code: ErrorCode,
+    code: str,
     detail: str,
     status_code: int,
+    transient: bool = False,
     errors: Optional[list] = None,
 ) -> JSONResponse:
-    """Create RFC 7807 compliant error response."""
-    problem = {
-        "type": f"{ERROR_TYPE_BASE}/{code.value}",
+    """Create an RFC 7807 compliant error response."""
+    problem: dict[str, Any] = {
+        "type": f"{ERROR_TYPE_BASE}/{code}",
         "title": ERROR_TITLES.get(code, "Error"),
         "status": status_code,
         "detail": detail,
         "instance": str(request.url),
-        "code": code.value,
+        "code": code,
+        "transient": transient,
     }
     if errors:
         problem["errors"] = errors
@@ -156,18 +103,21 @@ def register_error_handlers(app: FastAPI) -> None:
     async def chatbot_error_handler(
         request: Request, exc: ChatbotError
     ) -> JSONResponse:
+        """Core hierarchy → problem+json, status and retryability included."""
         logger.warning(
             "Application error",
-            code=exc.code.value,
-            detail=exc.detail,
+            code=exc.code,
+            detail=exc.message,
+            transient=exc.transient,
             path=str(request.url),
         )
         return make_problem_response(
             request=request,
             code=exc.code,
-            detail=exc.detail,
-            status_code=exc.status_code,
-            errors=exc.errors,
+            detail=exc.message,
+            status_code=exc.http_status,
+            transient=exc.transient,
+            errors=exc.details.get("field_errors"),
         )
 
     @app.exception_handler(RequestValidationError)
@@ -182,58 +132,39 @@ def register_error_handlers(app: FastAPI) -> None:
             }
             for err in exc.errors()
         ]
-        logger.warning(
-            "Validation error",
-            errors=errors,
-            path=str(request.url),
-        )
+        logger.warning("Validation error", errors=errors, path=str(request.url))
         return make_problem_response(
             request=request,
-            code=ErrorCode.VALIDATION_ERROR,
-            detail="Request validation failed. Check the 'errors' field.",
+            code="validation_error",
+            detail="Request validation failed",
             status_code=422,
+            transient=False,
             errors=errors,
         )
 
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(
-        request: Request, exc: HTTPException
-    ) -> JSONResponse:
-        code_map = {
-            401: ErrorCode.UNAUTHORIZED,
-            403: ErrorCode.FORBIDDEN,
-            404: ErrorCode.DOCUMENT_NOT_FOUND,
-            429: ErrorCode.RATE_LIMIT_EXCEEDED,
-            500: ErrorCode.INTERNAL_ERROR,
-            503: ErrorCode.SERVICE_UNAVAILABLE,
-        }
-        code = code_map.get(exc.status_code, ErrorCode.INTERNAL_ERROR)
+    @app.exception_handler(404)
+    async def not_found_handler(request: Request, exc: Exception) -> JSONResponse:
         return make_problem_response(
             request=request,
-            code=code,
-            detail=str(exc.detail),
-            status_code=exc.status_code,
+            code="not_found",
+            detail="Resource not found",
+            status_code=404,
         )
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
+        """Last-resort: never leak internals, never return a bare 500."""
         logger.error(
             "Unhandled exception",
-            error=str(exc),
-            error_type=type(exc).__name__,
             path=str(request.url),
+            error=str(exc),
             exc_info=True,
-        )
-        from configs.settings import settings
-        detail = (
-            str(exc) if settings.is_development
-            else "An internal error occurred."
         )
         return make_problem_response(
             request=request,
-            code=ErrorCode.INTERNAL_ERROR,
-            detail=detail,
+            code="internal_error",
+            detail="An internal error occurred",
             status_code=500,
         )
