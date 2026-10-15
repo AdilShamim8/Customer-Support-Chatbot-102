@@ -1,17 +1,116 @@
 [tool.poetry]
 name = "customer-support-chatbot"
-version = "1.0.0"
-description = "Production RAG-based Customer Support Chatbot"
-authors = ["Your Team"]
+version = "1.1.0"
+description = "Production RAG-based Customer Support Chatbot with hybrid retrieval, prompt engineering, and PEFT fine-tuning"
+authors = ["Adil Shamim <157037615+AdilShamim8@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/AdilShamim8/Customer-Support-Chatbot-102"
+keywords = ["rag", "llm", "customer-support", "prompt-engineering", "retrieval-augmented-generation"]
+packages = [{ include = "src" }, { include = "configs" }]
 python = "^3.11"
 
-[tool.black]
-line-length = 88
-target-version = ['py311']
+[tool.poetry.dependencies]
+python = "^3.11"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^5.0.0"
+black = "^24.4.2"
+isort = "^5.13.2"
+ruff = "^0.4.10"
+flake8 = "^7.1.0"
+mypy = "^1.10.0"
+bandit = "^1.7.9"
+pre-commit = "^3.7.0"
+
+# ── Black: formatting ────────────────────────────────────────────────────────
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''/(migrations)/'''
+
+# ── isort: import ordering ───────────────────────────────────────────────────
 [tool.isort]
 profile = "black"
+line_length = 100
+known_first_party = ["src", "configs"]
+skip_glob = ["migrations/*"]
 
+# ── Ruff: fast linting ───────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["migrations", ".venv", "notebooks"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear (likely bugs)
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "S",    # flake8-bandit (security)
+    "T20",  # flake8-print (no stray prints)
+]
+ignore = [
+    "E501",  # line length handled by black
+    "S101",  # assert allowed in tests
+    "B008",  # FastAPI dependency defaults pattern
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]
+"scripts/*" = ["T201"]
+
+# ── mypy: static typing ──────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+no_strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+check_untyped_defs = false
+exclude = "migrations/"
+
+# ── pytest: test discovery & markers ─────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-ra --strict-markers --tb=short"
+markers = [
+    "unit: fast, isolated tests (no network, no containers)",
+    "integration: tests requiring service dependencies (redis)",
+    "e2e: full end-to-end flows against a running stack",
+    "load: performance and soak tests (run manually)",
+    "slow: tests that take more than 5 seconds",
+]
+
+# ── coverage: quality gates ─────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["src", "configs"]
+omit = ["*/migrations/*", "*/tests/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+# ── bandit: security linting ────────────────────────────────────────────────
+[tool.bandit]
+exclude_dirs = ["tests", "migrations", ".venv"]
+skips = ["B101"]  # assert usage is fine in application asserts
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
