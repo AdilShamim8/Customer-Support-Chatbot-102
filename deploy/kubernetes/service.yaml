@@ -1,0 +1,31 @@
+# ClusterIP Service - stable in-cluster endpoint for the API tier.
+# Load balancing to pods happens here (kube-proxy round-robin); external
+# traffic enters via the Ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot-api
+  namespace: chatbot
+  labels:
+    app.kubernetes.io/name: customer-support-chatbot
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: customer-support-chatbot
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+# ServiceAccount - least-privilege identity for the API pods.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chatbot-api
+  namespace: chatbot
+  labels:
+    app.kubernetes.io/name: customer-support-chatbot
+automountServiceAccountToken: false
