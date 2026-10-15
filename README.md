@@ -1640,6 +1640,77 @@ class MyProviderClient(BaseLLMClient):
 
 ---
 
+## 🚀 Production Deployment
+
+> Full guides: `docs/runbooks/deployment.md` · scaling design:
+> `docs/architecture/scaling-100m-users.md` · capacity model:
+> `docs/architecture/capacity-planning.md`
+
+### Local production-shape (before touching a cluster)
+
+```bash
+make up-prod                        # gunicorn profile + healthcheck gates
+make smoke                          # preflight: /live, /ready, /metrics, golden question
+```
+
+### Kubernetes (the real thing)
+
+```bash
+# 1. Provision the platform (once) - VPC 3-AZ, EKS, ElastiCache, RDS
+cd deploy/terraform && terraform init && terraform apply
+
+# 2. Secrets from your secret manager (never from files)
+kubectl create secret generic chatbot-secrets -n chatbot \
+  --from-literal=OPENAI_API_KEY=sk-... \
+  --from-literal=SECRET_KEY=$(openssl rand -hex 32)
+
+# 3. Deploy with Kustomize
+kubectl apply -k deploy/kubernetes/overlays/production
+
+# 4. Verify before declaring victory
+kubectl -n chatbot rollout status deploy/chatbot-api
+./scripts/preflight.sh https://api.yourdomain.com $KEY
+```
+
+**What you get by default**: zero-downtime rolling deploys
+(`maxUnavailable=0` + readiness gates), HPA 6→1000 pods on CPU+RPS,
+zone-spread survivability, PDB-guarded node operations, zero-trust
+network policies, SSE-safe ingress timeouts, and 130s graceful drain
+so in-flight answers complete during deploys.
+
+### Release process
+
+```bash
+./scripts/release.sh minor          # verifies version parity + changelog
+git push origin main --follow-tags  # tag triggers release workflow
+```
+
+---
+
+## 🛡 Operations & SLOs
+
+> Definitions: `docs/operations/slo.md` · alert catalog:
+> `monitoring/alerts.yml` · incident playbooks: `docs/runbooks/`
+
+| SLO | Target | Enforcement |
+|-----|--------|-------------|
+| Availability | 99.9% of chat requests answered | Error-budget alerts (fast + slow burn) |
+| Answer latency | p95 < 3s · p99 < 8s | Latency histogram alerts |
+| First streamed token | p95 < 1s | First-token span |
+| Answer quality | faithfulness ≥ 0.90 · correctness ≥ 0.85 | Weekly golden-set eval + drift alerts |
+| Fallback rate | < 0.5% | fallback counter (users effectively unserved) |
+
+**Failure philosophy** — the service walks down a deliberate degradation
+ladder instead of erroring out: hybrid → vector-only retrieval → no-rank →
+stateless → cached → polite fallback. Every step is a config kill-switch;
+the ladder doubles as the recovery order. Full catalog:
+`docs/architecture/failure-modes.md`.
+
+**Incident response**: severity model, first-five-minutes checklist, and
+the kill-switch ladder live in `docs/runbooks/incident-response.md`.
+
+---
+
 ## 📚 Documentation
 
 | Resource | Location |
