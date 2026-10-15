@@ -1,0 +1,127 @@
+# Production-shaped local stack - closest-to-prod without a cluster.
+# Use for pre-deploy verification and failure drills:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Differences from dev compose: gunicorn (not uvicorn --reload), resource
+# limits, restart policies, healthcheck gates, no exposed DB ports.
+services:
+  chatbot:
+    image: customer-support-chatbot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["gunicorn", "src.api.main:app", "-c", "gunicorn.conf.py"]
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      WEB_CONCURRENCY: "4"
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://chatbot:chatbot_pw@postgres:5432/chatbot_db
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      CHROMA_HOST: chroma
+      VECTOR_STORE_TYPE: chroma
+      SEMANTIC_CACHE_ENABLED: "true"
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    ports:
+      - "8000:8000"
+    networks:
+      - chatbot-net
+
+  redis:
+    image: redis:7.2-alpine
+    command: redis-server --requirepass chatbot_pw --maxmemory 512mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "chatbot_pw", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # NO host port: redis is internal-only in production shape
+    networks:
+      - chatbot-net
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: chatbot_db
+      POSTGRES_USER: chatbot
+      POSTGRES_PASSWORD: chatbot_pw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbot -d chatbot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - chatbot-net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - chatbot-net
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    restart: unless-stopped
+    networks:
+      - chatbot-net
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - chatbot-net
+
+networks:
+  chatbot-net:
+    driver: bridge
+
+volumes:
+  pgdata:
