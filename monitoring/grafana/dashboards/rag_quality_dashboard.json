@@ -1,0 +1,174 @@
+{
+  "title": "RAG Answer Quality",
+  "uid": "rag-quality",
+  "tags": ["chatbot", "rag", "quality"],
+  "timezone": "utc",
+  "refresh": "5m",
+  "time": { "from": "now-7d", "to": "now" },
+  "annotations": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Faithfulness (SLO ≥ 0.90)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "chatbot_eval_faithfulness", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.85 },
+              { "color": "green", "value": 0.9 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Context Relevance (retrieval health)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "chatbot_eval_context_relevance", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.75 },
+              { "color": "green", "value": 0.85 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Answer Correctness (SLO ≥ 0.85)",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "chatbot_eval_answer_correctness", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.8 },
+              { "color": "green", "value": 0.85 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Refusal Rate (band 5-15%)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "chatbot_eval_refusal_rate", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0.05 },
+              { "color": "yellow", "value": 0.15 },
+              { "color": "red", "value": 0.25 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Quality Metrics Over Time (drift detection)",
+      "gridPos": { "h": 9, "w": 18, "x": 0, "y": 4 },
+      "targets": [
+        { "expr": "chatbot_eval_faithfulness", "legendFormat": "faithfulness", "refId": "A" },
+        { "expr": "chatbot_eval_context_relevance", "legendFormat": "context relevance", "refId": "B" },
+        { "expr": "chatbot_eval_answer_correctness", "legendFormat": "answer correctness", "refId": "C" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Semantic Cache Hit Rate (cost lever)",
+      "gridPos": { "h": 9, "w": 6, "x": 18, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(chatbot_cache_hits_total[1h])) / (sum(rate(chatbot_cache_hits_total[1h])) + sum(rate(chatbot_cache_misses_total[1h])))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.2 },
+              { "color": "green", "value": 0.35 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Token Cost per 1k Answers (business SLO)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "targets": [
+        {
+          "expr": "1000 * sum(rate(chatbot_llm_tokens_total[1h])) / sum(rate(http_requests_total{status=~\"2..\"}[1h]))",
+          "legendFormat": "tokens/1k answers",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Fallback Answer Rate (SLO < 0.5%)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "targets": [
+        {
+          "expr": "sum(rate(chatbot_fallback_responses_total[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "fallback rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 2
+}
