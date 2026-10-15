@@ -1,0 +1,37 @@
+# ServiceMonitor - Prometheus Operator scrape config.
+# Applying this makes Prometheus discover the pods automatically instead
+# of relying on static annotation scraping.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: chatbot-api
+  namespace: chatbot
+  labels:
+    app.kubernetes.io/name: customer-support-chatbot
+    release: prometheus     # matches the operator's serviceMonitorSelector
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: customer-support-chatbot
+      app.kubernetes.io/component: api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      # Drop high-cardinality series at the source (monitoring doc rules)
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "(http_request_duration_seconds_(bucket|sum|count)|chatbot_.*)"
+          action: keep
+---
+# PriorityClass - under node pressure, serving pods are evicted LAST.
+# Chat answers are user-facing; batch/ingestion workloads yield first.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: chatbot-serving
+value: 1000
+globalDefault: false
+description: "Customer-facing serving tier - protected under resource pressure"
+preemptionPolicy: PreemptLowerPriority
