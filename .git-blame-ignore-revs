@@ -1,0 +1,8 @@
+# Revisions excluded from git blame - whole-file mechanical rewrites
+# that pollute `git blame` output for every line they touch.
+#
+# Activate (one time):
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# 2026-10-15 CRLF -> LF normalization across 68 tracked files
+ff76d6a2005a74c168cc8d25447415f15f7c3537
