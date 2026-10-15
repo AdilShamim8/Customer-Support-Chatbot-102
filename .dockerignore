@@ -1,0 +1,50 @@
+# Build context exclusions - keeps Docker images small and builds fast
+.git
+.github
+.gitignore
+.dockerignore
+
+# Python artifacts
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+venv
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.coverage
+htmlcov
+
+# Docs & notebooks (not needed at runtime)
+docs/
+notebooks/
+*.md
+!README.md
+
+# Tests & CI (not needed at runtime)
+tests/
+scripts/
+deploy/
+monitoring/
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+
+# Data & models - mounted as volumes, never baked into images
+data/
+models/
+*.faiss
+*.safetensors
+*.onnx
+
+# Docker
+docker-compose*.yml
+Dockerfile*
