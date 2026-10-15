@@ -1,0 +1,122 @@
+# Prometheus alerting rules - the pages you will actually receive.
+# Philosophy (docs/operations/slo.md): alert on SYMPTOMS users feel
+# (latency, errors, unavailability), not on causes (CPU is high).
+# Every alert links to a runbook; alerting without a runbook is a prank.
+groups:
+  - name: chatbot-slo-burn
+    rules:
+      # ── Availability SLO: 99.9% of requests succeed ────────────────────
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="chatbot", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="chatbot"}[5m]))
+          ) > 0.02
+        for: 5m
+        labels:
+          severity: page
+          slo: availability
+        annotations:
+          summary: "Error rate above 2% for 5 minutes (SLO burn)"
+          runbook: docs/runbooks/incident-response.md#error-rate
+
+      # ── Latency SLO: p95 < 3s (chat), p99 < 8s ─────────────────────────
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="chatbot"}[5m])) by (le)
+          ) > 3
+        for: 10m
+        labels:
+          severity: page
+          slo: latency
+        annotations:
+          summary: "p95 latency above 3s for 10 minutes"
+          runbook: docs/runbooks/incident-response.md#latency
+
+      # ── Fast burn: multi-window multi-burn-rate (2% budget in 1h) ─────
+      - alert: ErrorBudgetFastBurn
+        expr: |
+          (
+            sum(rate(http_requests_total{job="chatbot", status=~"5.."}[1h]))
+            /
+            sum(rate(http_requests_total{job="chatbot"}[1h]))
+          ) > 0.1
+          and
+          (
+            sum(rate(http_requests_total{job="chatbot", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="chatbot"}[5m]))
+          ) > 0.1
+        for: 2m
+        labels:
+          severity: page
+          slo: availability
+        annotations:
+          summary: "FAST SLO burn: 10%+ errors over 1h AND 5m - outage in progress"
+          runbook: docs/runbooks/incident-response.md
+
+  - name: chatbot-dependencies
+    rules:
+      - alert: LLMProviderDown
+        expr: rate(chatbot_llm_requests_total{status="error"}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "LLM provider erroring >50% for 5m - check fallback path"
+          runbook: docs/runbooks/incident-response.md#llm-provider-outage
+
+      - alert: VectorStoreDown
+        expr: chatbot_index_health == 0
+        for: 3m
+        labels:
+          severity: page
+        annotations:
+          summary: "Vector index unhealthy - retrieval degraded or failing"
+          runbook: docs/runbooks/vector-index-rebuild.md
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Redis unreachable - service degrades to stateless mode"
+          runbook: docs/runbooks/incident-response.md#redis-loss
+
+      - alert: EmbeddingQuotaExhausted
+        expr: rate(chatbot_embedding_errors_total[10m]) > 0.1
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "Embedding API errors sustained - ingestion and query expansion failing"
+
+  - name: chatbot-saturation
+    rules:
+      - alert: PodRestartsLooping
+        expr: increase(kube_pod_container_status_restarts_total{namespace="chatbot", container="api"}[15m]) > 3
+        for: 0m
+        labels:
+          severity: page
+        annotations:
+          summary: "API container crash-looping"
+          runbook: docs/runbooks/incident-response.md#crashloop
+
+      - alert: HPAAtCeiling
+        expr: kube_horizontalpodautoscaler_status_current_replicas{namespace="chatbot"} >= kube_horizontalpodautoscaler_spec_max_replicas{namespace="chatbot"}
+        for: 15m
+        labels:
+          severity: warn
+        annotations:
+          summary: "HPA pinned at max - capacity ceiling reached, raise quota or optimize"
+
+      - alert: HighMemorySaturation
+        expr: container_memory_working_set_bytes{namespace="chatbot", container="api"} / container_spec_memory_limit_bytes{namespace="chatbot", container="api"} > 0.9
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "API pods above 90% memory - OOM kills imminent"
