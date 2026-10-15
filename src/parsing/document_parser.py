@@ -4,21 +4,24 @@ Supports rule-based and AI-based parsing strategies.
 """
 
 import hashlib
-import io
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-import pdfplumber
 import structlog
-from bs4 import BeautifulSoup
-from docx import Document as DocxDocument
-from unstructured.partition.auto import partition
-from unstructured.partition.pdf import partition_pdf
 
 logger = structlog.get_logger(__name__)
+
+# NOTE ON IMPORT POLICY: the heavy format backends (pdfplumber, bs4,
+# python-docx, unstructured) are deliberately imported INSIDE the parser
+# methods that use them. This module sits at the root of the import chain
+# for parsing, chunking, indexing and retrieval, so importing it must stay
+# cheap and dependency-light: a missing or heavy optional backend must
+# never break the chain (or pod cold start) - it only disables that
+# format's parser at runtime. tests/unit/test_import_isolation.py locks
+# this contract in.
 
 
 class ParseStrategy(str, Enum):
@@ -49,11 +52,13 @@ class ParsedDocument:
     metadata: dict[str, Any] = field(default_factory=dict)
     parse_strategy: str = ""
     page_count: int = 0
-    
+
     @property
     def content_hash(self) -> str:
-        return hashlib.md5(self.content.encode()).hexdigest()
-    
+        # md5 is deliberate: a fast content-dedup key, never a security
+        # primitive (no adversary chooses these hashes).
+        return hashlib.md5(self.content.encode()).hexdigest()  # noqa: S324
+
     def to_dict(self) -> dict:
         return {
             "doc_id": self.doc_id,
@@ -71,14 +76,14 @@ class ParsedDocument:
 
 class BaseParser(ABC):
     """Abstract base parser."""
-    
+
     @abstractmethod
     def parse(self, file_path: Path, **kwargs) -> ParsedDocument:
         pass
-    
+
     def _generate_doc_id(self, file_path: Path) -> str:
         return hashlib.sha256(str(file_path.resolve()).encode()).hexdigest()[:16]
-    
+
     def _clean_text(self, text: str) -> str:
         """Basic text cleaning."""
         # Remove excessive whitespace
@@ -94,17 +99,19 @@ class PDFParser(BaseParser):
     Rule-based PDF parser using pdfplumber.
     Extracts text with layout awareness.
     """
-    
+
     def parse(self, file_path: Path, **kwargs) -> ParsedDocument:
+        import pdfplumber  # heavy backend - loaded only when PDFs are parsed
+
         logger.info("Parsing PDF", path=str(file_path))
-        
-        sections = []
-        full_text_parts = []
-        
+
+        sections: list[dict[str, Any]] = []
+        full_text_parts: list[str] = []
+
         try:
             with pdfplumber.open(file_path) as pdf:
                 page_count = len(pdf.pages)
-                
+
                 for page_num, page in enumerate(pdf.pages, 1):
                     # Extract text with layout
                     text = page.extract_text(
@@ -114,7 +121,7 @@ class PDFParser(BaseParser):
                         x_density=7.25,
                         y_density=13,
                     )
-                    
+
                     if text:
                         cleaned = self._clean_text(text)
                         full_text_parts.append(cleaned)
@@ -124,27 +131,27 @@ class PDFParser(BaseParser):
                             "content": cleaned,
                             "tables": self._extract_tables(page),
                         })
-                
+
                 # Extract metadata
-                metadata = {
+                metadata: dict[str, Any] = {
                     "page_count": page_count,
                     "file_size": file_path.stat().st_size,
                     "file_name": file_path.name,
                 }
                 if pdf.metadata:
                     metadata.update({
-                        k.lower(): v 
-                        for k, v in pdf.metadata.items() 
+                        k.lower(): v
+                        for k, v in pdf.metadata.items()
                         if v
                     })
-                
+
         except Exception as e:
             logger.error("PDF parsing failed", path=str(file_path), error=str(e))
             raise
-        
+
         full_content = "\n\n".join(full_text_parts)
         title = metadata.get("title", file_path.stem)
-        
+
         return ParsedDocument(
             doc_id=self._generate_doc_id(file_path),
             source_path=str(file_path),
@@ -156,7 +163,7 @@ class PDFParser(BaseParser):
             parse_strategy=ParseStrategy.RULE_BASED.value,
             page_count=page_count,
         )
-    
+
     def _extract_tables(self, page) -> list[dict]:
         """Extract tables from a PDF page."""
         tables = []
@@ -168,8 +175,10 @@ class PDFParser(BaseParser):
                         "row_count": len(table),
                         "col_count": len(table[0]) if table else 0,
                     })
-        except Exception:
-            pass
+        except Exception as exc:
+            # Table extraction is best-effort: a malformed table must never
+            # fail the page's text extraction.
+            logger.debug("PDF table extraction failed", error=str(exc))
         return tables
 
 
@@ -178,11 +187,16 @@ class AIBasedPDFParser(BaseParser):
     AI-based PDF parser using unstructured.io.
     Better at handling complex layouts, forms, and mixed content.
     """
-    
+
     def parse(self, file_path: Path, **kwargs) -> ParsedDocument:
         logger.info("AI-parsing PDF", path=str(file_path))
-        
+
         try:
+            # unstructured is an optional heavy backend: import it lazily so
+            # a missing install degrades to rule-based parsing instead of
+            # breaking every import of this module.
+            from unstructured.partition.pdf import partition_pdf
+
             # Use unstructured's AI-based partitioning
             elements = partition_pdf(
                 filename=str(file_path),
@@ -191,18 +205,18 @@ class AIBasedPDFParser(BaseParser):
                 include_page_breaks=True,
                 extract_images_in_pdf=False,
             )
-            
-            sections = []
-            full_text_parts = []
-            current_section = None
-            
+
+            sections: list[dict[str, Any]] = []
+            full_text_parts: list[str] = []
+            current_section: dict[str, Any] | None = None
+
             for element in elements:
                 elem_type = type(element).__name__
                 elem_text = str(element).strip()
-                
+
                 if not elem_text:
                     continue
-                
+
                 if elem_type == "Title":
                     if current_section:
                         sections.append(current_section)
@@ -218,20 +232,20 @@ class AIBasedPDFParser(BaseParser):
                         "type": elem_type,
                         "text": elem_text,
                     })
-                
+
                 full_text_parts.append(elem_text)
-            
+
             if current_section:
                 sections.append(current_section)
-            
+
             full_content = "\n\n".join(full_text_parts)
-            
+
             # Extract title from first Title element or filename
             title = (
                 next((s["title"] for s in sections if s.get("title")), None)
                 or file_path.stem
             )
-            
+
             return ParsedDocument(
                 doc_id=self._generate_doc_id(file_path),
                 source_path=str(file_path),
@@ -246,7 +260,7 @@ class AIBasedPDFParser(BaseParser):
                 },
                 parse_strategy=ParseStrategy.AI_BASED.value,
             )
-            
+
         except Exception as e:
             logger.error("AI PDF parsing failed", path=str(file_path), error=str(e))
             logger.info("Falling back to rule-based parsing")
@@ -255,29 +269,31 @@ class AIBasedPDFParser(BaseParser):
 
 class HTMLParser(BaseParser):
     """HTML document parser with structure preservation."""
-    
+
     def parse(self, file_path: Path, **kwargs) -> ParsedDocument:
+        from bs4 import BeautifulSoup  # heavy backend - loaded lazily
+
         logger.info("Parsing HTML", path=str(file_path))
-        
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             html_content = f.read()
-        
+
         soup = BeautifulSoup(html_content, "lxml")
-        
+
         # Remove script and style elements
         for tag in soup(["script", "style", "nav", "footer", "header"]):
             tag.decompose()
-        
+
         # Extract title
         title_tag = soup.find("title") or soup.find("h1")
         title = title_tag.get_text(strip=True) if title_tag else file_path.stem
-        
+
         # Extract structured sections
-        sections = []
+        sections: list[dict[str, Any]] = []
         for heading in soup.find_all(["h1", "h2", "h3", "h4"]):
             section_title = heading.get_text(strip=True)
             section_content_parts = []
-            
+
             # Gather content until next heading of same or higher level
             for sibling in heading.next_siblings:
                 if hasattr(sibling, 'name') and sibling.name in ["h1", "h2", "h3", "h4"]:
@@ -286,7 +302,7 @@ class HTMLParser(BaseParser):
                     text = sibling.get_text(separator=" ", strip=True)
                     if text:
                         section_content_parts.append(text)
-            
+
             if section_content_parts:
                 sections.append({
                     "type": "section",
@@ -294,11 +310,11 @@ class HTMLParser(BaseParser):
                     "heading_level": heading.name,
                     "content": " ".join(section_content_parts),
                 })
-        
+
         # Full text extraction
         full_content = soup.get_text(separator="\n", strip=True)
         full_content = self._clean_text(full_content)
-        
+
         return ParsedDocument(
             doc_id=self._generate_doc_id(file_path),
             source_path=str(file_path),
@@ -316,20 +332,22 @@ class HTMLParser(BaseParser):
 
 class DocxParser(BaseParser):
     """Microsoft Word document parser."""
-    
+
     def parse(self, file_path: Path, **kwargs) -> ParsedDocument:
+        from docx import Document as DocxDocument  # heavy backend - lazy
+
         logger.info("Parsing DOCX", path=str(file_path))
-        
-        doc = DocxDocument(file_path)
-        sections = []
-        full_text_parts = []
-        current_section = None
-        
+
+        doc = DocxDocument(str(file_path))
+        sections: list[dict[str, Any]] = []
+        full_text_parts: list[str] = []
+        current_section: dict[str, Any] | None = None
+
         for para in doc.paragraphs:
             text = para.text.strip()
             if not text:
                 continue
-            
+
             # Detect headings
             if para.style.name.startswith("Heading"):
                 if current_section:
@@ -342,12 +360,12 @@ class DocxParser(BaseParser):
                 }
             elif current_section:
                 current_section["content"] += f"\n{text}"
-            
+
             full_text_parts.append(text)
-        
+
         if current_section:
             sections.append(current_section)
-        
+
         # Extract tables
         table_texts = []
         for table in doc.tables:
@@ -356,17 +374,17 @@ class DocxParser(BaseParser):
                 cells = [cell.text.strip() for cell in row.cells]
                 rows.append(" | ".join(cells))
             table_texts.append("\n".join(rows))
-        
+
         if table_texts:
             full_text_parts.extend(table_texts)
-        
+
         # Get title from core properties or first heading
         title = (
             doc.core_properties.title
             or (sections[0]["title"] if sections else None)
             or file_path.stem
         )
-        
+
         return ParsedDocument(
             doc_id=self._generate_doc_id(file_path),
             source_path=str(file_path),
@@ -385,18 +403,18 @@ class DocxParser(BaseParser):
 
 class MarkdownParser(BaseParser):
     """Markdown document parser."""
-    
+
     def parse(self, file_path: Path, **kwargs) -> ParsedDocument:
         logger.info("Parsing Markdown", path=str(file_path))
         import re
-        
-        with open(file_path, "r", encoding="utf-8") as f:
+
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
-        
-        sections = []
-        current_section = None
+
+        sections: list[dict[str, Any]] = []
+        current_section: dict[str, Any] | None = None
         lines = content.split("\n")
-        
+
         for line in lines:
             # Detect headings
             heading_match = re.match(r'^(#{1,4})\s+(.+)$', line)
@@ -413,23 +431,23 @@ class MarkdownParser(BaseParser):
                 }
             elif current_section:
                 current_section["content"] += f"\n{line}"
-        
+
         if current_section:
             sections.append(current_section)
-        
+
         # Extract document title
         title = (
             next((s["title"] for s in sections if s.get("level") == 1), None)
             or file_path.stem
         )
-        
+
         # Clean markdown syntax for plain text
         plain_text = re.sub(r'#{1,6}\s+', '', content)
         plain_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', plain_text)
         plain_text = re.sub(r'\*([^*]+)\*', r'\1', plain_text)
         plain_text = re.sub(r'`([^`]+)`', r'\1', plain_text)
         plain_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', plain_text)
-        
+
         return ParsedDocument(
             doc_id=self._generate_doc_id(file_path),
             source_path=str(file_path),
@@ -446,8 +464,8 @@ class DocumentParserFactory:
     """
     Factory that selects the appropriate parser based on file type and strategy.
     """
-    
-    _PARSERS = {
+
+    _PARSERS: dict[DocumentType, dict[ParseStrategy, type[BaseParser]]] = {
         DocumentType.PDF: {
             ParseStrategy.RULE_BASED: PDFParser,
             ParseStrategy.AI_BASED: AIBasedPDFParser,
@@ -465,7 +483,7 @@ class DocumentParserFactory:
             ParseStrategy.AI_BASED: MarkdownParser,
         },
     }
-    
+
     _EXTENSION_MAP = {
         ".pdf": DocumentType.PDF,
         ".html": DocumentType.HTML,
@@ -476,13 +494,13 @@ class DocumentParserFactory:
         ".markdown": DocumentType.MARKDOWN,
         ".txt": DocumentType.TXT,
     }
-    
+
     @classmethod
     def get_doc_type(cls, file_path: Path) -> DocumentType:
         return cls._EXTENSION_MAP.get(
             file_path.suffix.lower(), DocumentType.UNKNOWN
         )
-    
+
     @classmethod
     def get_parser(
         cls,
@@ -490,20 +508,22 @@ class DocumentParserFactory:
         strategy: ParseStrategy = ParseStrategy.RULE_BASED,
     ) -> BaseParser:
         doc_type = cls.get_doc_type(file_path)
-        
+
         if doc_type == DocumentType.UNKNOWN:
             raise ValueError(f"Unsupported file type: {file_path.suffix}")
-        
-        parsers_for_type = cls._PARSERS.get(doc_type, {})
+
+        parsers_for_type: dict[ParseStrategy, type[BaseParser]] = cls._PARSERS.get(
+            doc_type, {}
+        )
         parser_class = parsers_for_type.get(strategy) or parsers_for_type.get(
             ParseStrategy.RULE_BASED
         )
-        
+
         if not parser_class:
             raise ValueError(f"No parser for {doc_type} with strategy {strategy}")
-        
+
         return parser_class()
-    
+
     @classmethod
     def parse(
         cls,
